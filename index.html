@@ -817,9 +817,7 @@ function buildMatches(groupsData){
 // =============================================
 let fbApp = null;
 let fbRef = null;
-let fbWriteCount = 0;    // increments on each local write
-let fbAckCount   = 0;    // increments when Firebase confirms the write
-// While fbWriteCount > fbAckCount, we have unconfirmed writes — ignore incoming
+let fbLastWrite = 0; // timestamp of our last saveState() call
 const FB_CONFIG_KEY = 'bt2_firebase_config';
 const DB_PATH = 'torneio';
 
@@ -881,28 +879,6 @@ function initFirebase(cfg, statusEl){
       setFirebaseStatus(snap.val() === true);
     });
 
-    // Listen for remote changes → update UI on all devices
-    let fbSkipFirst = true; // always skip the first fire (current DB value on connect)
-    fbRef.on('value', snap => {
-      // Skip the initial fire on connect — we already have local state
-      if(fbSkipFirst){ fbSkipFirst = false; return; }
-
-      // Skip our own write echoes
-      if(fbWriteCount > fbAckCount){ fbAckCount++; return; }
-
-      const remote = snap.val();
-      if(!remote) return;
-
-      // Only apply remote if it's newer than local (timestamp comparison)
-      const remoteTs = remote._lastWriteAt || 0;
-      const localTs  = state._lastWriteAt  || 0;
-      if(remoteTs <= localTs) return;
-
-      state = migrateState(remote);
-      localStorage.setItem('bt2_state', JSON.stringify(state));
-      renderAll();
-    });
-
     localStorage.setItem(FB_CONFIG_KEY, JSON.stringify(cfg));
 
     if(statusEl){
@@ -912,12 +888,47 @@ function initFirebase(cfg, statusEl){
     document.getElementById('firebase-disconnect-btn').style.display = 'inline-flex';
     setFirebaseStatus(true);
 
-    // Always push local state to DB on connect — ensures DB has latest
-    state._lastWriteAt = state._lastWriteAt || Date.now();
-    fbWriteCount++;
-    fbRef.set(state).catch(e => {
-      console.warn('Firebase write error:', e);
-      if(statusEl){ statusEl.textContent = '⚠️ Conectado mas erro ao gravar: ' + e.message; statusEl.style.color = 'var(--gold)'; }
+    // On connect: read DB once, compare timestamps, then start listening
+    fbRef.once('value', snap => {
+      const remote = snap.val();
+      const remoteTs = remote ? (remote._lastWriteAt || 0) : 0;
+      const localTs  = state._lastWriteAt || 0;
+
+      if(localTs >= remoteTs){
+        // Local is newer or equal → push to DB so other devices get it
+        state._lastWriteAt = state._lastWriteAt || Date.now();
+        fbLastWrite = state._lastWriteAt;
+        fbRef.set(state).catch(e => console.warn('Firebase write error:', e));
+      } else {
+        // DB is newer → update local silently
+        state = migrateState(remote);
+        localStorage.setItem('bt2_state', JSON.stringify(state));
+        renderAll();
+      }
+
+      // Now start listening for future changes from OTHER devices
+      fbRef.on('value', snap => {
+        const remote = snap.val();
+        if(!remote) return;
+        const remoteTs = remote._lastWriteAt || 0;
+        // Ignore if it's our own write (same or older timestamp)
+        if(remoteTs <= (state._lastWriteAt || 0)) return;
+        state = migrateState(remote);
+        localStorage.setItem('bt2_state', JSON.stringify(state));
+        renderAll();
+      });
+    }).catch(e => {
+      console.warn('Firebase once error:', e);
+      // Fallback: just start listening
+      fbRef.on('value', snap => {
+        const remote = snap.val();
+        if(!remote) return;
+        const remoteTs = remote._lastWriteAt || 0;
+        if(remoteTs <= (state._lastWriteAt || 0)) return;
+        state = migrateState(remote);
+        localStorage.setItem('bt2_state', JSON.stringify(state));
+        renderAll();
+      });
     });
 
     showToast('🔥 Firebase conectado! Tudo sincronizado em tempo real.');
@@ -984,15 +995,10 @@ function disconnectFirebase(){
 }
 
 function saveState(){
-  state._lastWriteAt = Date.now(); // stamp timestamp on every save
+  state._lastWriteAt = Date.now();
+  fbLastWrite = state._lastWriteAt;
   localStorage.setItem('bt2_state', JSON.stringify(state));
-  if(fbRef){
-    fbWriteCount++;
-    fbRef.set(state).catch(e => {
-      console.warn('Firebase write error:', e);
-      fbWriteCount--;
-    });
-  }
+  if(fbRef) fbRef.set(state).catch(e => console.warn('Firebase write error:', e));
 }
 
 // Auto-connect: wait for Firebase SDK to be available, then connect
