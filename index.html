@@ -675,18 +675,30 @@ function buildFreshState(duplas, pool){
     groups,
     matches: buildMatches(groups),
     knockoutMatches: buildKnockoutMatches(),
-    reserva: 'Mariana',
+    reserva: '',
     pool: pool || JSON.parse(JSON.stringify(INITIAL_POOL)),
     config: JSON.parse(JSON.stringify(DEFAULT_CONFIG))
   };
 }
 
-function buildKnockoutMatches(){
+function buildKnockoutMatches(numGroups){
+  numGroups = numGroups || (typeof state !== 'undefined' && state && state.groups ? state.groups.groups.length : 4);
+  const gNames = ['A','B','C','D'];
+  const qfMatches = [];
+  if(numGroups === 4){
+    // 4 groups: 1ºA×2ºB, 1ºB×2ºA, 1ºC×2ºD, 2ºC×1ºD
+    qfMatches.push({id:'qf1',round:'qf',roundLabel:'Quartas de Final',label:'QF 1 — 1ºA × 2ºB',di1:null,di2:null,s1:null,s2:null,done:false,live:false});
+    qfMatches.push({id:'qf2',round:'qf',roundLabel:'Quartas de Final',label:'QF 2 — 1ºB × 2ºA',di1:null,di2:null,s1:null,s2:null,done:false,live:false});
+    qfMatches.push({id:'qf3',round:'qf',roundLabel:'Quartas de Final',label:'QF 3 — 1ºC × 2ºD',di1:null,di2:null,s1:null,s2:null,done:false,live:false});
+    qfMatches.push({id:'qf4',round:'qf',roundLabel:'Quartas de Final',label:'QF 4 — 2ºC × 1ºD',di1:null,di2:null,s1:null,s2:null,done:false,live:false});
+  } else if(numGroups === 2){
+    // 2 groups → straight to SF (no QF)
+  } else {
+    // 1 group → straight to SF
+  }
+  const sfLabel = numGroups === 4 ? 'Semi Final' : (numGroups === 2 ? 'Semi Final' : 'Semi Final');
   return [
-    {id:'qf1', round:'qf', roundLabel:'Quartas de Final', label:'QF 1 — 1ºA × 2ºB', di1:null, di2:null, s1:null, s2:null, done:false, live:false},
-    {id:'qf2', round:'qf', roundLabel:'Quartas de Final', label:'QF 2 — 1ºB × 2ºA', di1:null, di2:null, s1:null, s2:null, done:false, live:false},
-    {id:'qf3', round:'qf', roundLabel:'Quartas de Final', label:'QF 3 — 1ºC × 2ºD', di1:null, di2:null, s1:null, s2:null, done:false, live:false},
-    {id:'qf4', round:'qf', roundLabel:'Quartas de Final', label:'QF 4 — BYE × 1ºD', di1:null, di2:null, s1:null, s2:null, done:false, live:false},
+    ...qfMatches,
     {id:'sf1', round:'sf', roundLabel:'Semifinais',       label:'SF 1 — Venc. QF1 × Venc. QF2', di1:null, di2:null, s1:null, s2:null, done:false, live:false},
     {id:'sf2', round:'sf', roundLabel:'Semifinais',       label:'SF 2 — Venc. QF3 × Venc. QF4', di1:null, di2:null, s1:null, s2:null, done:false, live:false},
     {id:'fin', round:'final', roundLabel:'Grande Final',  label:'🏆 Grande Final', di1:null, di2:null, s1:null, s2:null, done:false, live:false},
@@ -696,46 +708,73 @@ function buildKnockoutMatches(){
 
 // Fill knockout di1/di2 from group results and previous knockout results
 function syncKnockoutTeams(){
-  if(!state.knockoutMatches) state.knockoutMatches = buildKnockoutMatches();
+  const numGroups = state.groups.groups.length;
+  const ng = numGroups;
+  if(!state.knockoutMatches || state.knockoutMatches.length === 0){
+    state.knockoutMatches = buildKnockoutMatches(ng);
+  }
   const q = getQualified();
   const km = state.knockoutMatches;
-  const byeIdx = state.groups.bye;
-  const {duplas} = state;
-
-  // QF teams from groups
-  km[0].di1 = q.find(x=>x.gi===0&&x.pos===1)?.di ?? null;
-  km[0].di2 = q.find(x=>x.gi===1&&x.pos===2)?.di ?? null;
-  km[1].di1 = q.find(x=>x.gi===1&&x.pos===1)?.di ?? null;
-  km[1].di2 = q.find(x=>x.gi===0&&x.pos===2)?.di ?? null;
-  km[2].di1 = q.find(x=>x.gi===2&&x.pos===1)?.di ?? null;
-  km[2].di2 = q.find(x=>x.gi===3&&x.pos===2)?.di ?? null;
-  km[3].di1 = byeIdx >= 0 ? byeIdx : (q.find(x=>x.gi===2&&x.pos===2)?.di ?? null);
-  km[3].di2 = q.find(x=>x.gi===3&&x.pos===1)?.di ?? null;
-
-  // SF teams from QF winners
   function winner(m){ if(!m||!m.done) return null; return m.s1>m.s2 ? m.di1 : m.di2; }
   function loser(m){  if(!m||!m.done) return null; return m.s1>m.s2 ? m.di2 : m.di1; }
-  km[4].di1 = winner(km[0]); km[4].di2 = winner(km[1]);
-  km[5].di1 = winner(km[2]); km[5].di2 = winner(km[3]);
-  // Final/3rd from SF
-  km[6].di1 = winner(km[4]); km[6].di2 = winner(km[5]);
-  km[7].di1 = loser(km[4]);  km[7].di2 = loser(km[5]);
+
+  if(ng === 4){
+    // QF: 1ºA×2ºB, 1ºB×2ºA, 1ºC×2ºD, 2ºC×1ºD
+    km[0].di1 = q.find(x=>x.gi===0&&x.pos===1)?.di ?? null;
+    km[0].di2 = q.find(x=>x.gi===1&&x.pos===2)?.di ?? null;
+    km[1].di1 = q.find(x=>x.gi===1&&x.pos===1)?.di ?? null;
+    km[1].di2 = q.find(x=>x.gi===0&&x.pos===2)?.di ?? null;
+    km[2].di1 = q.find(x=>x.gi===2&&x.pos===1)?.di ?? null;
+    km[2].di2 = q.find(x=>x.gi===3&&x.pos===2)?.di ?? null;
+    km[3].di1 = q.find(x=>x.gi===2&&x.pos===2)?.di ?? null;
+    km[3].di2 = q.find(x=>x.gi===3&&x.pos===1)?.di ?? null;
+    // SF from QF winners
+    km[4].di1 = winner(km[0]); km[4].di2 = winner(km[1]);
+    km[5].di1 = winner(km[2]); km[5].di2 = winner(km[3]);
+    // Final/3rd from SF
+    km[6].di1 = winner(km[4]); km[6].di2 = winner(km[5]);
+    km[7].di1 = loser(km[4]);  km[7].di2 = loser(km[5]);
+  } else {
+    // 1 or 2 groups → straight to SF
+    // SF1: 1ºA × 2ºB,  SF2: 1ºB × 2ºA  (or just pos1/pos2 if 1 group)
+    const sf1 = km.find(m=>m.id==='sf1');
+    const sf2 = km.find(m=>m.id==='sf2');
+    const fin = km.find(m=>m.id==='fin');
+    const trd = km.find(m=>m.id==='3rd');
+    if(ng === 2){
+      if(sf1){ sf1.di1 = q.find(x=>x.gi===0&&x.pos===1)?.di ?? null; sf1.di2 = q.find(x=>x.gi===1&&x.pos===2)?.di ?? null; }
+      if(sf2){ sf2.di1 = q.find(x=>x.gi===1&&x.pos===1)?.di ?? null; sf2.di2 = q.find(x=>x.gi===0&&x.pos===2)?.di ?? null; }
+    } else {
+      if(sf1){ sf1.di1 = q.find(x=>x.pos===1)?.di ?? null; sf1.di2 = q.find(x=>x.pos===4)?.di ?? null; }
+      if(sf2){ sf2.di1 = q.find(x=>x.pos===2)?.di ?? null; sf2.di2 = q.find(x=>x.pos===3)?.di ?? null; }
+    }
+    if(fin){ fin.di1 = winner(sf1); fin.di2 = winner(sf2); }
+    if(trd){ trd.di1 = loser(sf1);  trd.di2 = loser(sf2); }
+  }
+}
+
+function calcFormat(n){
+  // Returns {numGroups, advancePerGroup, koSize} for n duplas
+  // Rules:
+  //   - Everyone plays (no BYE)
+  //   - All groups same size or differ by 1 (fairness)
+  //   - koSize must be power of 2 (4 or 8)
+  //   - Prefer koSize=8 (QF) when n >= 8, koSize=4 (SF) when n < 8
+  if(n <= 4)  return {numGroups:1, advancePerGroup:4, koSize:4}; // 1 group, all advance to SF
+  if(n <= 6)  return {numGroups:2, advancePerGroup:2, koSize:4}; // 2 groups of 3, top2 each → SF
+  if(n <= 11) return {numGroups:2, advancePerGroup:2, koSize:4}; // 2 groups, top2 each → SF (4 teams)
+  // For 12+ duplas → 4 groups → top 2 each → QF (8 teams)
+  return {numGroups:4, advancePerGroup:2, koSize:8};
 }
 
 function buildGroups(duplas){
-  // Distribute duplas round-robin into 4 groups
-  // Last dupla gets BYE if count is odd
-  const gs = [[],[],[],[]];
-  const total = duplas.length;
-  let playable = total;
-  let bye = -1;
-  // If (total % 4) would leave one group with 1 member, handle
-  // Simple: last dupla is BYE if odd
-  if(total % 2 !== 0){ playable = total - 1; bye = total - 1; }
-  for(let i = 0; i < playable; i++){
-    gs[i % 4].push(i);
+  const n = duplas.length;
+  const {numGroups} = calcFormat(n);
+  const gs = Array.from({length: numGroups}, () => []);
+  for(let i = 0; i < n; i++){
+    gs[i % numGroups].push(i);
   }
-  return { groups: gs, bye };
+  return { groups: gs, bye: -1, numGroups };
 }
 
 function buildMatches(groupsData){
@@ -970,12 +1009,9 @@ function renderDuplas(){
   duplas.forEach((d, i) => {
     // Find group
     let groupIdx = -1, isBye = false;
-    if(groups.bye === i){ isBye = true; }
-    else {
-      groups.groups.forEach((g,gi) => { if(g.includes(i)) groupIdx = gi; });
-    }
-    const gLabel = isBye ? 'BYE' : (groupIdx >= 0 ? 'Grupo ' + GROUP_NAMES[groupIdx] : '—');
-    const gClass = isBye ? 'gb-bye' : (groupIdx >= 0 ? 'gb-'+GROUP_COLORS[groupIdx] : '');
+    groups.groups.forEach((g,gi) => { if(g.includes(i)) groupIdx = gi; });
+    const gLabel = groupIdx >= 0 ? 'Grupo ' + GROUP_NAMES[groupIdx] : '—';
+    const gClass = groupIdx >= 0 ? 'gb-'+GROUP_COLORS[groupIdx] : '';
     
     const card = document.createElement('div');
     card.className = 'dupla-card';
@@ -1265,14 +1301,9 @@ function renderGrupos(){
     wrap.appendChild(card);
   });
   
-  // BYE notice
+  // No BYE — clear notice
   const bn = document.getElementById('bye-notice');
-  if(groups.bye >= 0 && duplas[groups.bye]){
-    const bd = duplas[groups.bye];
-    bn.innerHTML = `<div class="bye-notice" style="margin-top:20px">⭐ <strong>Dupla ${groups.bye+1} (${bd.m} / ${bd.f})</strong> — BYE direto para as quartas de final.</div>`;
-  } else {
-    bn.innerHTML = '';
-  }
+  if(bn) bn.innerHTML = '';
 }
 
 // =============================================
@@ -1280,11 +1311,13 @@ function renderGrupos(){
 // =============================================
 function getQualified(){
   const {groups, matches, duplas} = state;
+  const {advancePerGroup} = calcFormat(duplas.length);
   const qualified = [];
   groups.groups.forEach((grp, gi) => {
     const standings = calcStandings(grp, matches, duplas);
-    qualified.push({ gi, pos:1, di: standings[0]?.di, d: duplas[standings[0]?.di] });
-    qualified.push({ gi, pos:2, di: standings[1]?.di, d: duplas[standings[1]?.di] });
+    for(let pos = 1; pos <= Math.min(advancePerGroup, standings.length); pos++){
+      qualified.push({ gi, pos, di: standings[pos-1]?.di, d: duplas[standings[pos-1]?.di] });
+    }
   });
   return qualified;
 }
