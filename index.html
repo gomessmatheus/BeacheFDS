@@ -829,14 +829,22 @@ function initFirebase(cfg, statusEl){
     });
 
     // Listen for remote changes → update UI on all devices
+    let fbSkipFirst = true; // always skip the first fire (current DB value on connect)
     fbRef.on('value', snap => {
-      // If we have pending unconfirmed writes, this is our own echo — skip
-      if(fbWriteCount > fbAckCount) {
-        fbAckCount++;
-        return;
-      }
+      // Skip the initial fire on connect — we already have local state
+      if(fbSkipFirst){ fbSkipFirst = false; return; }
+
+      // Skip our own write echoes
+      if(fbWriteCount > fbAckCount){ fbAckCount++; return; }
+
       const remote = snap.val();
       if(!remote) return;
+
+      // Only apply remote if it's newer than local (timestamp comparison)
+      const remoteTs = remote._lastWriteAt || 0;
+      const localTs  = state._lastWriteAt  || 0;
+      if(remoteTs <= localTs) return;
+
       state = migrateState(remote);
       localStorage.setItem('bt2_state', JSON.stringify(state));
       renderAll();
@@ -922,12 +930,13 @@ function disconnectFirebase(){
 }
 
 function saveState(){
+  state._lastWriteAt = Date.now(); // stamp timestamp on every save
   localStorage.setItem('bt2_state', JSON.stringify(state));
   if(fbRef){
     fbWriteCount++;
     fbRef.set(state).catch(e => {
       console.warn('Firebase write error:', e);
-      fbWriteCount--; // rollback counter on error so listener isn't permanently blocked
+      fbWriteCount--;
     });
   }
 }
