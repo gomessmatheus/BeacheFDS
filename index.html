@@ -573,6 +573,7 @@ footer{position:relative;z-index:1;text-align:center;padding:24px 20px;border-to
 </footer>
 
 <script id="baked-data" type="application/json">{"firebase": {"apiKey": "AIzaSyDq9JYdXj59rLrd_LIUpnhaWHJMJBElE9Q", "authDomain": "torneio-bt-ff5eb.firebaseapp.com", "databaseURL": "https://torneio-bt-ff5eb-default-rtdb.firebaseio.com", "projectId": "torneio-bt-ff5eb", "storageBucket": "torneio-bt-ff5eb.firebasestorage.app", "messagingSenderId": "428661352937", "appId": "1:428661352937:web:963023b8780645ea51c378"}}</script>
+<script id="baked-data" type="application/json">{"firebase": {"apiKey": "AIzaSyDq9JYdXj59rLrd_LIUpnhaWHJMJBElE9Q", "authDomain": "torneio-bt-ff5eb.firebaseapp.com", "databaseURL": "https://torneio-bt-ff5eb-default-rtdb.firebaseio.com", "projectId": "torneio-bt-ff5eb", "storageBucket": "torneio-bt-ff5eb.firebasestorage.app", "messagingSenderId": "428661352937", "appId": "1:428661352937:web:963023b8780645ea51c378"}}</script>
 <script>
 // =============================================
 //  STATE
@@ -2211,9 +2212,65 @@ function buildPublishedHtml(){
   const payload = { state: snapshot };
   if(fbCfg) payload.firebase = fbCfg;
   let html = document.documentElement.outerHTML;
+  // Use split tag to avoid HTML parser treating this as a closing tag
+  const closeTag = '<' + '/script>';
+  const openTag  = '<script id="baked-data" type="application/json">';
   html = html.replace(
-    /<script id="baked-data"[^>]*>[\s\S]*?<\/script>/,
-    '<script id="baked-data" type="application/json">{"firebase": {"apiKey": "AIzaSyDq9JYdXj59rLrd_LIUpnhaWHJMJBElE9Q", "authDomain": "torneio-bt-ff5eb.firebaseapp.com", "databaseURL": "https://torneio-bt-ff5eb-default-rtdb.firebaseio.com", "projectId": "torneio-bt-ff5eb", "storageBucket": "torneio-bt-ff5eb.firebasestorage.app", "messagingSenderId": "428661352937", "appId": "1:428661352937:web:963023b8780645ea51c378"}}</script>
+    new RegExp(openTag.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '[\\s\\S]*?' + closeTag),
+    openTag + JSON.stringify(payload) + closeTag
+  );
+  return html;
+}
+
+function publicarSorteio(){
+  const html = buildPublishedHtml();
+  const fbCfg = loadFirebaseConfig();
+  try {
+    const blob = new Blob([html], {type:'text/html'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'torneio-beach-tennis.html';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(a.href); }, 1000);
+    showToast(fbCfg ? '📤 Baixado com Firebase! Suba no GitHub.' : '📤 Baixado! Conecte o Firebase antes para sync automático.');
+  } catch(e) {
+    showToast('❌ Erro: ' + e.message);
+  }
+}
+
+function openPublishModal(){
+  const fbCfg = loadFirebaseConfig();
+  const statusEl = document.getElementById('publish-fb-status');
+  if(statusEl){
+    if(fbCfg){
+      statusEl.innerHTML = '🔥 Firebase conectado — será embutido automaticamente.';
+      statusEl.style.color = 'var(--success)';
+    } else {
+      statusEl.innerHTML = '⚠️ Firebase não conectado. Clique em <strong>⚫ Offline</strong> antes de publicar.';
+      statusEl.style.color = 'var(--gold)';
+    }
+  }
+  document.getElementById('modal-publish').classList.add('open');
+}
+
+function doPublicar(){
+  publicarSorteio();
+  const s1 = document.getElementById('pub-step1');
+  if(s1){ s1.style.background='rgba(56,217,169,.1)'; s1.style.borderLeft='3px solid var(--success)'; }
+}
+
+function renderAll(){
+  renderDuplas();
+  renderPool();
+  renderPartidas();
+  renderGrupos();
+  renderChaveamento();
+  renderCronograma();
+}
+
+renderAll();
+</script>
 <!-- PUBLISH MODAL -->
 <div class="modal-overlay" id="modal-publish">
   <div class="modal" style="max-width:460px;">
