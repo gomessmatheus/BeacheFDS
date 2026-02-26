@@ -572,7 +572,7 @@ footer{position:relative;z-index:1;text-align:center;padding:24px 20px;border-to
   <p>🏖️ Torneio Beach do FDS · Duplas Mistas · <span id="footer-date"></span></p>
 </footer>
 
-<script id="baked-data" type="application/json">{"firebase": {"apiKey": "AIzaSyDq9JYdXj59rLrd_LIUpnhaWHJMJBElE9Q", "authDomain": "torneio-bt-ff5eb.firebaseapp.com", "databaseURL": "https://torneio-bt-ff5eb-default-rtdb.firebaseio.com", "projectId": "torneio-bt-ff5eb", "storageBucket": "torneio-bt-ff5eb.firebasestorage.app", "messagingSenderId": "428661352937", "appId": "1:428661352937:web:963023b8780645ea51c378", "measurementId": "G-38ESEVVL05"}}</script>
+<script id="baked-data" type="application/json">{"firebase": {"apiKey": "AIzaSyDq9JYdXj59rLrd_LIUpnhaWHJMJBElE9Q", "authDomain": "torneio-bt-ff5eb.firebaseapp.com", "databaseURL": "https://torneio-bt-ff5eb-default-rtdb.firebaseio.com", "projectId": "torneio-bt-ff5eb", "storageBucket": "torneio-bt-ff5eb.firebasestorage.app", "messagingSenderId": "428661352937", "appId": "1:428661352937:web:963023b8780645ea51c378"}}</script>
 <script>
 // =============================================
 //  STATE
@@ -637,7 +637,17 @@ let liveAdv = 0;
 let matchInLive = null;
 
 function migrateState(s){
-  if(!s.knockoutMatches) s.knockoutMatches = buildKnockoutMatches();
+  // Always reset bye — no BYE system anymore
+  if(s.groups) s.groups.bye = -1;
+  // Rebuild groups if format changed (different number of groups)
+  if(s.groups && s.duplas){
+    const expected = calcFormat(s.duplas.length).numGroups;
+    if(s.groups.groups.length !== expected){
+      s.groups = buildGroups(s.duplas);
+      s.matches = buildMatches(s.groups);
+    }
+  }
+  if(!s.knockoutMatches) s.knockoutMatches = buildKnockoutMatches(s.groups ? s.groups.groups.length : 4);
   if(!s.pool) s.pool = JSON.parse(JSON.stringify(INITIAL_POOL));
   if(s.pool.homens.length && typeof s.pool.homens[0] === 'string')
     s.pool.homens = s.pool.homens.map(n => ({name:n, adv:false}));
@@ -674,7 +684,7 @@ function buildFreshState(duplas, pool){
     duplas,
     groups,
     matches: buildMatches(groups),
-    knockoutMatches: buildKnockoutMatches(),
+    knockoutMatches: buildKnockoutMatches(groups.groups.length),
     reserva: '',
     pool: pool || JSON.parse(JSON.stringify(INITIAL_POOL)),
     config: JSON.parse(JSON.stringify(DEFAULT_CONFIG))
@@ -682,7 +692,7 @@ function buildFreshState(duplas, pool){
 }
 
 function buildKnockoutMatches(numGroups){
-  numGroups = numGroups || (typeof state !== 'undefined' && state && state.groups ? state.groups.groups.length : 4);
+  numGroups = numGroups || 4;
   const gNames = ['A','B','C','D'];
   const qfMatches = [];
   if(numGroups === 4){
@@ -710,7 +720,10 @@ function buildKnockoutMatches(numGroups){
 function syncKnockoutTeams(){
   const numGroups = state.groups.groups.length;
   const ng = numGroups;
-  if(!state.knockoutMatches || state.knockoutMatches.length === 0){
+  // Rebuild if missing or if format changed (e.g. 4 groups now but had 2 before)
+  const expectedQFs = ng === 4 ? 4 : 0;
+  const currentQFs = (state.knockoutMatches || []).filter(m => m.round === 'qf').length;
+  if(!state.knockoutMatches || state.knockoutMatches.length === 0 || currentQFs !== expectedQFs){
     state.knockoutMatches = buildKnockoutMatches(ng);
   }
   const q = getQualified();
@@ -898,7 +911,8 @@ function initFirebase(cfg, statusEl){
     document.getElementById('firebase-disconnect-btn').style.display = 'inline-flex';
     setFirebaseStatus(true);
 
-    // Push current local state up so DB is seeded
+    // Always push local state to DB on connect — ensures DB has latest
+    state._lastWriteAt = state._lastWriteAt || Date.now();
     fbWriteCount++;
     fbRef.set(state).catch(e => {
       console.warn('Firebase write error:', e);
@@ -1008,7 +1022,7 @@ function renderDuplas(){
   
   duplas.forEach((d, i) => {
     // Find group
-    let groupIdx = -1, isBye = false;
+    let groupIdx = -1;
     groups.groups.forEach((g,gi) => { if(g.includes(i)) groupIdx = gi; });
     const gLabel = groupIdx >= 0 ? 'Grupo ' + GROUP_NAMES[groupIdx] : '—';
     const gClass = groupIdx >= 0 ? 'gb-'+GROUP_COLORS[groupIdx] : '';
@@ -2199,63 +2213,7 @@ function buildPublishedHtml(){
   let html = document.documentElement.outerHTML;
   html = html.replace(
     /<script id="baked-data"[^>]*>[\s\S]*?<\/script>/,
-    '<script id="baked-data" type="application/json">' + JSON.stringify(payload) + '<\/script>'
-  );
-  return html;
-}
-
-function publicarSorteio(){
-  const html = buildPublishedHtml();
-  const fbCfg = loadFirebaseConfig();
-  try {
-    const blob = new Blob([html], {type:'text/html'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'torneio-beach-tennis.html';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(a.href); }, 1000);
-    showToast(fbCfg ? '📤 Baixado com Firebase! Suba no Netlify.' : '📤 Baixado! Conecte o Firebase antes para sync automático.');
-  } catch(e) {
-    showToast('❌ Erro: ' + e.message);
-  }
-}
-
-function openPublishModal(){
-  const fbCfg = loadFirebaseConfig();
-  const statusEl = document.getElementById('publish-fb-status');
-  if(fbCfg){
-    statusEl.innerHTML = '🔥 Firebase conectado — será embutido no arquivo automaticamente.';
-    statusEl.style.color = 'var(--success)';
-  } else {
-    statusEl.innerHTML = '⚠️ Firebase não conectado. Clique em <strong>⚫ Offline</strong> no topo para configurar antes de publicar.';
-    statusEl.style.color = 'var(--gold)';
-  }
-  document.getElementById('modal-publish').classList.add('open');
-}
-
-function doPublicar(){
-  publicarSorteio();
-  // Update step 1 to show done
-  const s1 = document.getElementById('pub-step1');
-  if(s1){ s1.style.background = 'rgba(56,217,169,.1)'; s1.style.borderLeft = '3px solid var(--success)'; }
-}
-
-function renderAll(){
-  renderDuplas();
-  renderPool();
-  renderPartidas();
-  renderGrupos();
-  renderChaveamento();
-  renderLiveSelector();
-  renderCronograma();
-  updateHeroMeta();
-}
-
-document.getElementById('footer-date').textContent = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
-
-renderAll();
-</script>
+    '<script id="baked-data" type="application/json">{"firebase": {"apiKey": "AIzaSyDq9JYdXj59rLrd_LIUpnhaWHJMJBElE9Q", "authDomain": "torneio-bt-ff5eb.firebaseapp.com", "databaseURL": "https://torneio-bt-ff5eb-default-rtdb.firebaseio.com", "projectId": "torneio-bt-ff5eb", "storageBucket": "torneio-bt-ff5eb.firebasestorage.app", "messagingSenderId": "428661352937", "appId": "1:428661352937:web:963023b8780645ea51c378"}}</script>
 <!-- PUBLISH MODAL -->
 <div class="modal-overlay" id="modal-publish">
   <div class="modal" style="max-width:460px;">
