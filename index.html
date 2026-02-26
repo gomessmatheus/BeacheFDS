@@ -888,43 +888,34 @@ function initFirebase(cfg, statusEl){
     document.getElementById('firebase-disconnect-btn').style.display = 'inline-flex';
     setFirebaseStatus(true);
 
-    // On connect: read DB once, compare timestamps, then start listening
+    // On connect: read DB. If newer than local, apply it. Never push on connect.
     fbRef.once('value', snap => {
       const remote = snap.val();
-      const remoteTs = remote ? (remote._lastWriteAt || 0) : 0;
-      const localTs  = state._lastWriteAt || 0;
-
-      if(localTs >= remoteTs){
-        // Local is newer or equal → push to DB so other devices get it
-        state._lastWriteAt = state._lastWriteAt || Date.now();
-        fbLastWrite = state._lastWriteAt;
-        fbRef.set(state).catch(e => console.warn('Firebase write error:', e));
-      } else {
-        // DB is newer → update local silently
-        state = migrateState(remote);
-        localStorage.setItem('bt2_state', JSON.stringify(state));
-        renderAll();
+      if(remote){
+        const remoteTs = remote._lastWriteAt || 0;
+        const localTs  = state._lastWriteAt  || 0;
+        if(remoteTs > localTs){
+          state = migrateState(remote);
+          localStorage.setItem('bt2_state', JSON.stringify(state));
+          renderAll();
+        }
       }
-
-      // Now start listening for future changes from OTHER devices
+      // Start listening for future changes from other devices
       fbRef.on('value', snap => {
         const remote = snap.val();
         if(!remote) return;
         const remoteTs = remote._lastWriteAt || 0;
-        // Ignore if it's our own write (same or older timestamp)
         if(remoteTs <= (state._lastWriteAt || 0)) return;
         state = migrateState(remote);
         localStorage.setItem('bt2_state', JSON.stringify(state));
         renderAll();
       });
     }).catch(e => {
-      console.warn('Firebase once error:', e);
-      // Fallback: just start listening
+      // Fallback: just listen
       fbRef.on('value', snap => {
         const remote = snap.val();
         if(!remote) return;
-        const remoteTs = remote._lastWriteAt || 0;
-        if(remoteTs <= (state._lastWriteAt || 0)) return;
+        if((remote._lastWriteAt||0) <= (state._lastWriteAt||0)) return;
         state = migrateState(remote);
         localStorage.setItem('bt2_state', JSON.stringify(state));
         renderAll();
