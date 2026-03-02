@@ -6,8 +6,8 @@
 <title>🏖️ Torneio Beach do FDS</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://unpkg.com/firebase@10.12.2/compat/app/dist/index.js"></script>
+<script src="https://unpkg.com/firebase@10.12.2/compat/database/dist/index.js"></script>
 <style>
 :root {
   --sand:#F2DEB3; --coral:#E85D3A; --coral-l:#FF7A5C;
@@ -289,21 +289,54 @@ footer{position:relative;z-index:1;text-align:center;padding:24px 20px;border-to
   .section-title{font-size:26px;}
   .live-save-row{gap:5px;}
 }
+
+/* ROLE SYSTEM */
+.admin-only, .score-only { display:none !important; }
+body.role-admin .admin-only { display:inline-flex !important; }
+body.role-admin .score-only { display:inline-flex !important; }
+body.role-juiz  .score-only { display:inline-flex !important; }
+.btn-score-wrap { display:none; }
+body.role-admin .btn-score-wrap, body.role-juiz .btn-score-wrap { display:flex !important; }
+body:not(.role-admin):not(.role-juiz) .score-input { pointer-events:none; opacity:.5; background:transparent; }
+#role-badge { font-size:11px; font-weight:700; letter-spacing:1px; padding:4px 12px; border-radius:20px; cursor:pointer; transition:all .2s; }
+#role-badge.admin { background:rgba(240,180,41,.2); color:var(--gold); border:1px solid rgba(240,180,41,.3); }
+#role-badge.juiz  { background:rgba(43,191,176,.15); color:var(--teal); border:1px solid rgba(43,191,176,.3); }
+#role-badge.viewer{ background:rgba(255,255,255,.08); color:var(--muted); border:1px solid var(--border); }
+
+/* TIEBREAK MODE */
+.tiebreak-bar{background:rgba(240,180,41,.08);border-bottom:1px solid rgba(240,180,41,.2);padding:7px 16px;display:flex;align-items:center;justify-content:center;gap:10px;display:none;}
+body.tiebreak-active .tiebreak-bar{display:flex;}
+body.tiebreak-active .point-bar{background:rgba(240,180,41,.06);}
+body.tiebreak-active .point-value{color:var(--gold);}
+body.tiebreak-active .point-label::before{content:'TB · ';}
+body.tiebreak-active .score-live{color:var(--gold);}
+.tiebreak-badge{background:rgba(240,180,41,.2);color:var(--gold);border:1px solid rgba(240,180,41,.35);font-size:10px;font-weight:700;letter-spacing:2px;padding:3px 10px;border-radius:20px;text-transform:uppercase;}
+.btn-tiebreak{background:rgba(240,180,41,.12);color:var(--gold);border:1px solid rgba(240,180,41,.3);font-size:12px;font-weight:600;}
+.btn-tiebreak.active{background:rgba(240,180,41,.3);border-color:var(--gold);}
+
+/* ── CATEGORY TABS ─────────────────────────────────────────────────── */
+.cat-tabs-wrap{display:none;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 20px;background:rgba(255,255,255,.02);border-bottom:1px solid var(--border);}
+.cat-tab{background:var(--card);border:1px solid var(--border);color:var(--muted);font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;padding:7px 18px;border-radius:20px;cursor:pointer;transition:all .2s;}
+.cat-tab:hover{border-color:var(--teal);color:var(--teal);}
+.cat-tab.active{background:rgba(43,191,176,.15);border-color:var(--teal);color:var(--teal);}
+.cat-tab.cat-add{background:transparent;border-style:dashed;color:var(--muted);font-size:12px;}
+.cat-tab.cat-add:hover{color:var(--sand);border-color:var(--sand);}
 </style>
 </head>
 <body>
 <div class="bg-orbs"></div>
 
 <header class="hero">
-  <div class="hero-badge">🏖️ Academia — Duplas Mistas</div>
-  <h1>TORNEIO<span>Beach do FDS</span></h1>
+  <div class="hero-badge" id="hero-badge-text">🏖️ Academia — Duplas Mistas</div>
+  <h1 id="hero-title">TORNEIO<span>Beach do FDS</span></h1>
   <div class="hero-meta">
-    <div class="hero-meta-item" id="meta-date" onclick="openConfigModal()" style="cursor:pointer;border-color:rgba(232,93,58,.3);" title="Clique para configurar">📅 <span id="hero-date-label">Data a definir</span></div>
-    <div class="hero-meta-item" id="meta-time" onclick="openConfigModal()" style="cursor:pointer;" title="Clique para configurar">⏰ <span id="hero-time-label">Horário a definir</span></div>
+    <div class="hero-meta-item" id="meta-date" onclick="adminAction('openConfigModal')" style="cursor:pointer;border-color:rgba(232,93,58,.3);" title="Clique para configurar (Admin)">📅 <span id="hero-date-label">Data a definir</span></div>
+    <div class="hero-meta-item" id="meta-time" onclick="adminAction('openConfigModal')" style="cursor:pointer;" title="Clique para configurar (Admin)">⏰ <span id="hero-time-label">Horário a definir</span></div>
     <div class="hero-meta-item">🎾 2 Quadras</div>
     <div class="hero-meta-item" id="meta-count">👥 34 Participantes</div>
+    <div id="role-badge" class="hero-meta-item viewer" onclick="openRoleModal()" title="Clique para Admin/Juiz">👤 Participante</div>
     <div class="hero-meta-item" id="firebase-status" onclick="openFirebaseModal()" style="cursor:pointer;" title="Configurar sincronização">⚫ Offline</div>
-    <button class="hero-meta-item" onclick="openConfigModal()" style="cursor:pointer;background:rgba(232,93,58,.15);border-color:rgba(232,93,58,.4);color:var(--coral-l);border:1px solid;font-family:inherit;font-size:13px;font-weight:500;">⚙️ Configurar Torneio</button>
+    <button class="hero-meta-item admin-only" onclick="openConfigModal()" style="cursor:pointer;background:rgba(232,93,58,.15);border-color:rgba(232,93,58,.4);color:var(--coral-l);border:1px solid;font-family:inherit;font-size:13px;font-weight:500;">⚙️ Configurar Torneio</button>
   </div>
 </header>
 
@@ -320,15 +353,17 @@ footer{position:relative;z-index:1;text-align:center;padding:24px 20px;border-to
   </div>
 </nav>
 
+<!-- CATEGORY TABS -->
+<div class="cat-tabs-wrap" id="category-tabs"></div>
+
 <!-- ===== DUPLAS ===== -->
 <section id="duplas" class="section active">
   <h2 class="section-title">Duplas do Torneio</h2>
   <p class="section-sub">Edite, adicione ou remova duplas. Os grupos são redistribuídos automaticamente.</p>
   <div class="controls">
-    <button class="btn btn-primary" onclick="openDuplaModal()">+ Adicionar Dupla</button>
-    <button class="btn btn-secondary" onclick="sortearDoPool()">🎲 Sortear do Pool</button>
-    <button class="btn btn-secondary" onclick="sortearNovamente()">🔀 Ressortear Duplas</button>
-    <button class="btn btn-gold" onclick="openFirebaseModal()" style="margin-left:auto" id="sync-btn-duplas">🔥 Sincronizar</button>
+    <button class="btn btn-primary admin-only" onclick="openDuplaModal()">+ Adicionar Dupla</button>
+    <button class="btn btn-secondary admin-only" onclick="sortearDoPool()">🎲 Sortear do Pool</button>
+    <button class="btn btn-secondary admin-only" onclick="sortearNovamente()">🔀 Ressortear Duplas</button>
   </div>
   <div class="duplas-grid" id="duplas-grid"></div>
   <div id="reserva-row" style="margin-top:12px;"></div>
@@ -337,11 +372,11 @@ footer{position:relative;z-index:1;text-align:center;padding:24px 20px;border-to
 <!-- ===== POOL ===== -->
 <section id="pool" class="section">
   <h2 class="section-title">Pool de Participantes</h2>
-  <p class="section-sub">Gerencie a lista de jogadores disponíveis. O sorteio de duplas é feito a partir daqui.</p>
+  <p class="section-sub" id="pool-section-sub">Gerencie a lista de jogadores disponíveis. O sorteio de duplas é feito a partir daqui.</p>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;" id="pool-grid">
     <div class="pool-col" id="pool-homens-col">
       <div class="pool-col-header">
-        <span class="pool-col-title">👨 Homens</span>
+        <span class="pool-col-title" id="pool-h-title">👨 Homens</span>
         <span class="pool-col-count" id="pool-h-count">0</span>
         <button class="btn btn-primary btn-sm" onclick="openPoolModal('h')" style="margin-left:auto">+ Adicionar</button>
       </div>
@@ -349,7 +384,7 @@ footer{position:relative;z-index:1;text-align:center;padding:24px 20px;border-to
     </div>
     <div class="pool-col" id="pool-mulheres-col">
       <div class="pool-col-header">
-        <span class="pool-col-title">👩 Mulheres</span>
+        <span class="pool-col-title" id="pool-f-title">👩 Mulheres</span>
         <span class="pool-col-count" id="pool-m-count">0</span>
         <button class="btn btn-primary btn-sm" onclick="openPoolModal('m')" style="margin-left:auto">+ Adicionar</button>
       </div>
@@ -358,7 +393,7 @@ footer{position:relative;z-index:1;text-align:center;padding:24px 20px;border-to
   </div>
   <div id="pool-balance-msg" style="margin-top:16px;"></div>
   <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap;">
-    <button class="btn btn-primary" onclick="sortearDoPool()">🎲 Sortear Duplas Mistas</button>
+    <button class="btn btn-primary admin-only" id="btn-sortear-pool" onclick="sortearDoPool()">🎲 Sortear Duplas</button>
     <button class="btn btn-secondary" onclick="if(confirm('Limpar todo o pool?')){clearPool();}">🗑️ Limpar Pool</button>
   </div>
 </section>
@@ -368,9 +403,8 @@ footer{position:relative;z-index:1;text-align:center;padding:24px 20px;border-to
   <h2 class="section-title">Partidas — Fase de Grupos</h2>
   <p class="section-sub">Insira o placar e salve. Os resultados atualizam o ranking automaticamente.</p>
   <div class="controls">
-    <button class="btn btn-secondary" onclick="clearAllResults()">🗑️ Limpar Resultados</button>
+    <button class="btn btn-secondary admin-only" onclick="clearAllResults()">🗑️ Limpar Resultados</button>
     <div id="partidas-progress" style="font-size:13px;color:var(--muted);"></div>
-    <button class="btn btn-gold" onclick="openFirebaseModal()" style="margin-left:auto">🔥 Sincronizar</button>
   </div>
   <div class="partidas-wrap" id="partidas-wrap"></div>
 </section>
@@ -388,7 +422,6 @@ footer{position:relative;z-index:1;text-align:center;padding:24px 20px;border-to
   <h2 class="section-title">Chaveamento</h2>
   <p class="section-sub">Os classificados de cada grupo preenchem o mata-mata automaticamente.</p>
   <div style="margin-bottom:16px;">
-    <button class="btn btn-gold" onclick="openFirebaseModal()">🔥 Sincronizar</button>
   </div>
   <div class="bracket-container" id="bracket-container"></div>
 </section>
@@ -413,7 +446,7 @@ footer{position:relative;z-index:1;text-align:center;padding:24px 20px;border-to
 <!-- ===== CRONOGRAMA ===== -->
 <section id="cronograma" class="section">
   <h2 class="section-title">Cronograma do Dia</h2>
-  <p class="section-sub">Calculado automaticamente com base nas configurações. <button class="btn btn-secondary btn-sm" onclick="openConfigModal()" style="vertical-align:middle">⚙️ Editar</button></p>
+  <p class="section-sub">Calculado automaticamente com base nas configurações. <button class="btn btn-secondary btn-sm admin-only" onclick="openConfigModal()" style="vertical-align:middle">⚙️ Editar</button></p>
   <div class="sched-wrap" id="sched-wrap-dynamic"></div>
 </section>
 
@@ -482,9 +515,41 @@ footer{position:relative;z-index:1;text-align:center;padding:24px 20px;border-to
 
 <!-- CONFIG MODAL -->
 <div class="modal-overlay" id="modal-config">
-  <div class="modal" style="max-width:480px;">
+  <div class="modal" style="max-width:520px;max-height:90vh;overflow-y:auto;">
     <h2>⚙️ Configurações do Torneio</h2>
-    <p>Defina a data, horários e duração média de cada fase.</p>
+    <p>Esporte, formato e horários.</p>
+
+    <div style="background:rgba(43,191,176,.06);border:1px solid rgba(43,191,176,.2);border-radius:12px;padding:14px 16px;margin-bottom:16px;">
+      <p style="font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:12px;">🏅 Esporte e Formato</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group">
+          <label>Esporte</label>
+          <select class="form-input" id="cfg-sport" onchange="updateTeamModeOptions()">
+            <option value="beach_tennis">🎾 Beach Tennis</option>
+            <option value="tennis">🎾 Tênis</option>
+            <option value="beach_volei">🏐 Beach Vôlei</option>
+            <option value="futevolei">⚽ Futevôlei</option>
+            <option value="padel">🏓 Padel</option>
+            <option value="pickleball">🥒 Pickleball</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Modalidade</label>
+          <select class="form-input" id="cfg-team-mode">
+            <option value="misto">👫 Duplas Mistas</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>🏷️ Nome do Torneio</label>
+          <input class="form-input" type="text" id="cfg-name" placeholder="Ex: Torneio Beach do FDS">
+        </div>
+        <div class="form-group">
+          <label>🏫 Academia / Local</label>
+          <input class="form-input" type="text" id="cfg-academy" placeholder="Ex: Academia XYZ">
+        </div>
+      </div>
+    </div>
+
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
       <div class="form-group" style="grid-column:1/-1;">
         <label>📅 Data do Torneio</label>
@@ -528,6 +593,18 @@ footer{position:relative;z-index:1;text-align:center;padding:24px 20px;border-to
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModals()">Cancelar</button>
       <button class="btn btn-primary" onclick="saveConfig()">💾 Salvar</button>
+    <div class="admin-only" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+      <p style="font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:10px;">🏅 Categorias do Torneio</p>
+      <div id="cfg-categories-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;"></div>
+      <button class="btn btn-secondary btn-sm" onclick="openNewCategoryModal()" style="width:100%">➕ Adicionar Categoria</button>
+    </div>
+    <div class="admin-only" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+      <p style="font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:10px;">🔐 Senhas de Acesso</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group"><label>Senha Admin</label><input class="form-input" id="cfg-adminPass" type="text" placeholder="admin123"></div>
+        <div class="form-group"><label>Senha Juiz</label><input class="form-input" id="cfg-juizPass" type="text" placeholder="juiz123"></div>
+      </div>
+    </div>
     </div>
   </div>
 </div>
@@ -606,7 +683,270 @@ const INITIAL_POOL = {
   mulheres:["Adriana","Vanessa G","Solange","Ana Clara Matos","Paty","Bárbara","Flavia","Mari Bocayuva","Dani Filadelpho","Dani Garcia","Priscila","Letícia","Andreza Gazon","Victoria","Anna Gabriela","Dani Carneiro","Marcia Vieira","Mariana"].map(n=>({name:n,adv:false}))
 };
 
+
+// ── SPORT CONFIGS ────────────────────────────────────────────────────
+const SPORT_CONFIGS = {
+  beach_tennis: {
+    id: 'beach_tennis',
+    name: 'Beach Tennis',
+    emoji: '🎾',
+    teamModes: ['misto','masculino','feminino'],
+    defaultTeamMode: 'misto',
+    scoring: 'games',        // games | sets | points
+    maxScore: 9,
+    setsToWin: null,
+    gamesPerSet: null,
+    scoreLabel: 'Games',
+    teamLabel: 'Dupla',
+    playerLabel: { m: 'Homem', f: 'Mulher' },
+    courtLabel: 'Quadra',
+    courtEmoji: '🏖️',
+    badgeText: 'Duplas Mistas',
+    vocabulary: { point: 'Ponto', game: 'Game', match: 'Partida', win: 'Vitória' },
+    defaultGroupDur: 12,
+    defaultKoDur: 20,
+  },
+  tennis: {
+    id: 'tennis',
+    name: 'Tênis',
+    emoji: '🎾',
+    teamModes: ['individual_m','individual_f','dupla_m','dupla_f','dupla_mista'],
+    defaultTeamMode: 'dupla_m',
+    scoring: 'sets',
+    maxScore: 7,
+    setsToWin: 2,
+    gamesPerSet: 6,
+    scoreLabel: 'Sets',
+    teamLabel: 'Dupla',
+    playerLabel: { m: 'Jogador', f: 'Jogadora' },
+    courtLabel: 'Quadra',
+    courtEmoji: '🎾',
+    badgeText: 'Duplas',
+    vocabulary: { point: 'Ponto', game: 'Game', match: 'Partida', win: 'Vitória' },
+    defaultGroupDur: 25,
+    defaultKoDur: 40,
+  },
+  beach_volei: {
+    id: 'beach_volei',
+    name: 'Beach Vôlei',
+    emoji: '🏐',
+    teamModes: ['misto','masculino','feminino'],
+    defaultTeamMode: 'misto',
+    scoring: 'sets',
+    maxScore: 25,
+    setsToWin: 2,
+    gamesPerSet: 25,
+    scoreLabel: 'Sets',
+    teamLabel: 'Dupla',
+    playerLabel: { m: 'Jogador', f: 'Jogadora' },
+    courtLabel: 'Quadra',
+    courtEmoji: '🏖️',
+    badgeText: 'Duplas Mistas',
+    vocabulary: { point: 'Ponto', game: 'Set', match: 'Partida', win: 'Vitória' },
+    defaultGroupDur: 20,
+    defaultKoDur: 30,
+  },
+  futevolei: {
+    id: 'futevolei',
+    name: 'Futevôlei',
+    emoji: '⚽',
+    teamModes: ['misto','masculino','feminino'],
+    defaultTeamMode: 'masculino',
+    scoring: 'sets',
+    maxScore: 18,
+    setsToWin: 2,
+    gamesPerSet: 18,
+    scoreLabel: 'Sets',
+    teamLabel: 'Dupla',
+    playerLabel: { m: 'Jogador', f: 'Jogadora' },
+    courtLabel: 'Arena',
+    courtEmoji: '⚽',
+    badgeText: 'Masculino',
+    vocabulary: { point: 'Ponto', game: 'Set', match: 'Partida', win: 'Vitória' },
+    defaultGroupDur: 15,
+    defaultKoDur: 25,
+  },
+  padel: {
+    id: 'padel',
+    name: 'Padel',
+    emoji: '🏓',
+    teamModes: ['misto','masculino','feminino'],
+    defaultTeamMode: 'misto',
+    scoring: 'sets',
+    maxScore: 7,
+    setsToWin: 2,
+    gamesPerSet: 6,
+    scoreLabel: 'Sets',
+    teamLabel: 'Dupla',
+    playerLabel: { m: 'Jogador', f: 'Jogadora' },
+    courtLabel: 'Pista',
+    courtEmoji: '🏓',
+    badgeText: 'Duplas Mistas',
+    vocabulary: { point: 'Ponto', game: 'Game', match: 'Partida', win: 'Vitória' },
+    defaultGroupDur: 20,
+    defaultKoDur: 35,
+  },
+  pickleball: {
+    id: 'pickleball',
+    name: 'Pickleball',
+    emoji: '🥒',
+    teamModes: ['misto','masculino','feminino','individual_m','individual_f'],
+    defaultTeamMode: 'misto',
+    scoring: 'points',
+    maxScore: 11,
+    setsToWin: null,
+    gamesPerSet: null,
+    scoreLabel: 'Pontos',
+    teamLabel: 'Dupla',
+    playerLabel: { m: 'Jogador', f: 'Jogadora' },
+    courtLabel: 'Quadra',
+    courtEmoji: '🥒',
+    badgeText: 'Duplas Mistas',
+    vocabulary: { point: 'Ponto', game: 'Jogo', match: 'Partida', win: 'Vitória' },
+    defaultGroupDur: 10,
+    defaultKoDur: 15,
+  },
+};
+
+const TEAM_MODE_LABELS = {
+  misto:         { label: 'Duplas Mistas', icon: '👫', hasFemale: true },
+  masculino:     { label: 'Masculino',     icon: '👨', hasFemale: false },
+  feminino:      { label: 'Feminino',      icon: '👩', hasFemale: false },
+  dupla_m:       { label: 'Duplas Masc.',  icon: '👬', hasFemale: false },
+  dupla_f:       { label: 'Duplas Fem.',   icon: '👭', hasFemale: true  },
+  dupla_mista:   { label: 'Duplas Mistas', icon: '👫', hasFemale: true  },
+  individual_m:  { label: 'Individual M',  icon: '🧍', hasFemale: false },
+  individual_f:  { label: 'Individual F',  icon: '🧍', hasFemale: false },
+};
+
+function getSport(){
+  const id = (state && state.config && state.config.sport) || 'beach_tennis';
+  return SPORT_CONFIGS[id] || SPORT_CONFIGS.beach_tennis;
+}
+
+function getTeamMode(){
+  const cfg = (state && state.config) || {};
+  const sport = getSport();
+  return cfg.teamMode || sport.defaultTeamMode;
+}
+
+function isMixedMode(){
+  const cat = getActiveCat();
+  const tm  = (cat && cat.teamMode) || getTeamMode();
+  return TEAM_MODE_LABELS[tm] ? TEAM_MODE_LABELS[tm].hasFemale !== false : true;
+}
+// ─────────────────────────────────────────────────────────────────────
+
+
+function getActiveCat(){
+  // Always returns a valid category — never null
+  if(!state || !state.categories || !state.categories.length){
+    // Emergency fallback: create a minimal in-memory category
+    if(!state) return { duplas:[], groups:{groups:[],bye:-1}, matches:[], knockoutMatches:[], pool:{homens:[],mulheres:[]}, reserva:'', teamMode:'misto', name:'Misto', id:'cat_default' };
+    if(!state.categories) state.categories = [];
+    const fallback = { duplas:[], groups:{groups:[],bye:-1}, matches:[], knockoutMatches:[], pool:{homens:[],mulheres:[]}, reserva:'', teamMode:'misto', name:'Misto', id:'cat_default' };
+    state.categories.push(fallback);
+    state.activeCatId = 'cat_default';
+    return fallback;
+  }
+  const id = state.activeCatId;
+  return state.categories.find(c => c.id === id) || state.categories[0];
+}
+
+function getActiveCatIndex(){
+  if(!state.categories) return 0;
+  const id = state.activeCatId;
+  const idx = state.categories.findIndex(c => c.id === id);
+  return idx >= 0 ? idx : 0;
+}
+
+function setActiveCategory(id){
+  state.activeCatId = id;
+  // Also update config teamMode to reflect active category
+  const cat = getActiveCat();
+  if(cat && state.config) state.config.teamMode = cat.teamMode;
+  renderAll();
+  applyTheme();
+  renderCategoryTabs();
+}
+
+function addCategory(name, teamMode){
+  if(!state.categories) state.categories = [];
+  const cat = buildFreshCategory(name, teamMode);
+  state.categories.push(cat);
+  state.activeCatId = cat.id;
+  saveState('categories');
+  renderCategoryTabs();
+  renderAll();
+  applyTheme();
+  showToast('✅ Categoria "' + name + '" criada!');
+}
+
+function deleteCategory(id){
+  if(!state.categories || state.categories.length <= 1){
+    showToast('⚠️ É preciso ter ao menos 1 categoria.'); return;
+  }
+  if(!confirm('Excluir esta categoria e todos os seus dados?')) return;
+  state.categories = state.categories.filter(c => c.id !== id);
+  if(state.activeCatId === id) state.activeCatId = state.categories[0].id;
+  saveState('categories');
+  renderCategoryTabs();
+  renderAll();
+}
+
+function saveCat(key){
+  // Save only the changed key within the active category
+  const idx = getActiveCatIndex();
+  state._lastWriteAt = Date.now();
+  localStorage.setItem('bt2_state', JSON.stringify(state));
+  if(!fbRef) return;
+  const update = { _lastWriteAt: state._lastWriteAt };
+  update['categories/' + idx + '/' + key] = state.categories[idx][key];
+  fbRef.update(update).catch(e => console.warn('Firebase write error:', e));
+}
+
+function renderCategoryTabs(){
+  const wrap = document.getElementById('category-tabs');
+  if(!wrap) return;
+  if(!state || !state.categories) return;
+  const cats = state.categories || [];
+  const activeId = state.activeCatId;
+  if(cats.length <= 1){
+    wrap.innerHTML = '';
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = 'flex';
+  wrap.innerHTML = cats.map(c => `
+    <button class="cat-tab ${c.id === activeId ? 'active' : ''}" onclick="setActiveCategory('${c.id}')">
+      ${c.name}
+    </button>
+  `).join('') + (currentRole === 'admin' ? `
+    <button class="cat-tab cat-add" onclick="openNewCategoryModal()">+ Nova</button>
+  ` : '');
+}
+
+function openNewCategoryModal(){
+  document.getElementById('modal-newcat').classList.add('open');
+  document.getElementById('newcat-name').value = '';
+  document.getElementById('newcat-teammode').value = 'misto';
+}
+
+function saveNewCategory(){
+  const name = document.getElementById('newcat-name').value.trim();
+  const teamMode = document.getElementById('newcat-teammode').value;
+  if(!name){ showToast('⚠️ Digite um nome para a categoria.'); return; }
+  addCategory(name, teamMode);
+  closeModals();
+}
+// ─────────────────────────────────────────────────────────────────────
 const DEFAULT_CONFIG = {
+  adminPass: 'admin123',
+  juizPass:  'juiz123',
+  sport: 'beach_tennis',
+  teamMode: 'misto',
+  tournamentName: 'Torneio Beach do FDS',
+  academy: 'Academia — Duplas Mistas',
   date: '',
   startTime: '09:00',
   endTime: '14:00',
@@ -630,31 +970,124 @@ const BAKED_STATE    = _readBaked('state');
 const BAKED_FIREBASE = _readBaked('firebase');
 
 let state = loadState();
+
+// ── ROLE SYSTEM ──────────────────────────────────────────
+const ROLE_KEY = 'bt_role';
+let currentRole = localStorage.getItem(ROLE_KEY) || 'viewer';
+// Apply role class immediately (before renderAll) so CSS works from the start
+document.body.classList.add('role-' + currentRole);
+
+function applyRole(role){
+  currentRole = role || 'viewer';
+  localStorage.setItem(ROLE_KEY, currentRole);
+  document.body.classList.remove('role-admin','role-juiz','role-viewer');
+  document.body.classList.add('role-' + currentRole);
+  const badge = document.getElementById('role-badge');
+  if(badge){
+    badge.className = 'hero-meta-item ' + currentRole;
+    if(currentRole==='admin')       badge.textContent = '⚙️ Admin';
+    else if(currentRole==='juiz')   badge.textContent = '🎯 Juiz';
+    else                             badge.textContent = '👤 Participante';
+  }
+}
+
+function adminAction(fn){
+  if(currentRole === 'admin'){ window[fn](); }
+  else { showToast('🔒 Apenas Admin pode editar. Clique em ' + (document.getElementById('role-badge')||{}).textContent + ' para entrar.'); }
+}
+
+function openRoleModal(){
+  const modal = document.getElementById('modal-role');
+  document.getElementById('role-pass-input').value = '';
+  document.getElementById('role-modal-status').textContent = '';
+  document.getElementById('role-current-label').textContent =
+    currentRole === 'admin' ? '⚙️ Admin' : currentRole === 'juiz' ? '🎯 Juiz' : '👤 Participante';
+  modal.classList.add('open');
+}
+
+function submitRolePassword(){
+  const pass = document.getElementById('role-pass-input').value.trim();
+  const status = document.getElementById('role-modal-status');
+  const adminPass = state.config.adminPass || 'admin123';
+  const juizPass  = state.config.juizPass  || 'juiz123';
+  if(pass === adminPass){
+    applyRole('admin');
+    closeModals();
+    showToast('⚙️ Modo Admin ativado!');
+  } else if(pass === juizPass){
+    applyRole('juiz');
+    closeModals();
+    showToast('🎯 Modo Juiz ativado!');
+  } else {
+    status.textContent = '❌ Senha incorreta';
+    status.style.color = 'var(--coral)';
+  }
+}
+
+function logoutRole(){
+  applyRole('viewer');
+  closeModals();
+  showToast('👤 Voltou para modo Participante');
+}
+// ─────────────────────────────────────────────────────────
+
 let timerInterval = null;
 let liveScore = {s1:0, s2:0};
 let livePoints = {p1:0, p2:0};
 let liveDeuce = false;
 let liveAdv = 0;
+let liveTiebreak = false;
 let matchInLive = null;
 
 function migrateState(s){
-  // Always reset bye — no BYE system anymore
-  if(s.groups) s.groups.bye = -1;
-  // Rebuild groups if format changed (different number of groups)
-  if(s.groups && s.duplas){
-    const expected = calcFormat(s.duplas.length).numGroups;
-    if(s.groups.groups.length !== expected){
-      s.groups = buildGroups(s.duplas);
-      s.matches = buildMatches(s.groups);
-    }
+  // ── Migrate old flat state → new categories structure ──
+  if(!s.categories){
+    const cat = buildFreshCategory('Misto', 'misto', 'cat_default');
+    if(s.duplas)          cat.duplas          = s.duplas;
+    if(s.pool)            cat.pool            = s.pool;
+    if(s.reserva)         cat.reserva         = s.reserva;
+    if(s.groups)          { s.groups.bye=-1; cat.groups = s.groups; }
+    if(s.matches)         cat.matches         = s.matches;
+    if(s.knockoutMatches) cat.knockoutMatches  = s.knockoutMatches;
+    s.categories  = [cat];
+    s.activeCatId = 'cat_default';
+    delete s.duplas; delete s.pool; delete s.reserva;
+    delete s.groups; delete s.matches; delete s.knockoutMatches;
   }
-  if(!s.knockoutMatches) s.knockoutMatches = buildKnockoutMatches(s.groups ? s.groups.groups.length : 4);
-  if(!s.pool) s.pool = JSON.parse(JSON.stringify(INITIAL_POOL));
-  if(s.pool.homens.length && typeof s.pool.homens[0] === 'string')
-    s.pool.homens = s.pool.homens.map(n => ({name:n, adv:false}));
-  if(s.pool.mulheres.length && typeof s.pool.mulheres[0] === 'string')
-    s.pool.mulheres = s.pool.mulheres.map(n => ({name:n, adv:false}));
-  if(!s.config) s.config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+  // ── Validate each category ──
+  (s.categories || []).forEach(cat => {
+    if(!cat.pool) cat.pool = { homens:[], mulheres:[] };
+    if(cat.pool.homens.length && typeof cat.pool.homens[0]==='string')
+      cat.pool.homens = cat.pool.homens.map(n=>({name:n,adv:false}));
+    if(cat.pool.mulheres.length && typeof cat.pool.mulheres[0]==='string')
+      cat.pool.mulheres = cat.pool.mulheres.map(n=>({name:n,adv:false}));
+    if(!cat.duplas)  cat.duplas  = [];
+    if(!cat.groups || !cat.groups.groups)  cat.groups = buildGroups(cat.duplas);
+    else { cat.groups.bye = -1; }
+    const expected = calcFormat(cat.duplas.length).numGroups;
+    if((cat.groups.groups||[]).length !== expected){
+      cat.groups  = buildGroups(cat.duplas);
+      cat.matches = buildMatches(cat.groups);
+    }
+    if(!cat.matches) cat.matches = buildMatches(cat.groups);
+    const expectedQFs = cat.groups.groups.length===4 ? 4 : 0;
+    const currentQFs  = (cat.knockoutMatches||[]).filter(m=>m.round==='qf').length;
+    if(!cat.knockoutMatches || currentQFs !== expectedQFs)
+      cat.knockoutMatches = buildKnockoutMatches(cat.groups.groups.length);
+    if(!cat.teamMode) cat.teamMode = 'misto';
+    if(!cat.name)     cat.name     = 'Categoria';
+    if(!cat.id)       cat.id       = 'cat_' + Date.now();
+  });
+  if(!s.activeCatId || !s.categories.find(c=>c.id===s.activeCatId))
+    s.activeCatId = s.categories[0].id;
+  // ── Merge config ──
+  if(!s.config){
+    s.config = JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+  } else {
+    Object.keys(DEFAULT_CONFIG).forEach(k => {
+      if(s.config[k] === undefined) s.config[k] = DEFAULT_CONFIG[k];
+    });
+  }
   return s;
 }
 
@@ -680,14 +1113,18 @@ function loadState(){
 }
 
 function buildFreshState(duplas, pool){
-  const groups = buildGroups(duplas);
+  // Legacy: build single-category state
+  const cat = buildFreshCategory('Misto', 'misto', 'cat_default');
+  if(duplas && duplas.length){
+    cat.duplas = duplas;
+    cat.groups = buildGroups(duplas);
+    cat.matches = buildMatches(cat.groups);
+    cat.knockoutMatches = buildKnockoutMatches(cat.groups.groups.length);
+  }
+  if(pool) cat.pool = pool;
   return {
-    duplas,
-    groups,
-    matches: buildMatches(groups),
-    knockoutMatches: buildKnockoutMatches(groups.groups.length),
-    reserva: '',
-    pool: pool || JSON.parse(JSON.stringify(INITIAL_POOL)),
+    categories: [cat],
+    activeCatId: 'cat_default',
     config: JSON.parse(JSON.stringify(DEFAULT_CONFIG))
   };
 }
@@ -719,16 +1156,17 @@ function buildKnockoutMatches(numGroups){
 
 // Fill knockout di1/di2 from group results and previous knockout results
 function syncKnockoutTeams(){
-  const numGroups = state.groups.groups.length;
+  const cat = getActiveCat();
+  const numGroups = cat.groups.groups.length;
   const ng = numGroups;
   // Rebuild if missing or if format changed (e.g. 4 groups now but had 2 before)
   const expectedQFs = ng === 4 ? 4 : 0;
-  const currentQFs = (state.knockoutMatches || []).filter(m => m.round === 'qf').length;
-  if(!state.knockoutMatches || state.knockoutMatches.length === 0 || currentQFs !== expectedQFs){
-    state.knockoutMatches = buildKnockoutMatches(ng);
+  const currentQFs = (getActiveCat().knockoutMatches || []).filter(m => m.round === 'qf').length;
+  if(!getActiveCat().knockoutMatches || getActiveCat().knockoutMatches.length === 0 || currentQFs !== expectedQFs){
+    cat.knockoutMatches = buildKnockoutMatches(ng);
   }
   const q = getQualified();
-  const km = state.knockoutMatches;
+  const km = getActiveCat().knockoutMatches;
   function winner(m){ if(!m||!m.done) return null; return m.s1>m.s2 ? m.di1 : m.di2; }
   function loser(m){  if(!m||!m.done) return null; return m.s1>m.s2 ? m.di2 : m.di1; }
 
@@ -765,6 +1203,27 @@ function syncKnockoutTeams(){
     if(fin){ fin.di1 = winner(sf1); fin.di2 = winner(sf2); }
     if(trd){ trd.di1 = loser(sf1);  trd.di2 = loser(sf2); }
   }
+}
+
+
+// ── CATEGORY SYSTEM ──────────────────────────────────────────────────
+// Each category has its own pool, duplas, groups, matches, knockoutMatches
+function buildFreshCategory(name, teamMode, id){
+  id = id || ('cat_' + Date.now());
+  const duplas = [];
+  const groups = buildGroups(duplas);
+  const isMixed = (TEAM_MODE_LABELS[teamMode] || {}).hasFemale !== false;
+  return {
+    id,
+    name: name || 'Categoria',
+    teamMode: teamMode || 'misto',
+    duplas,
+    groups,
+    matches: buildMatches(groups),
+    knockoutMatches: buildKnockoutMatches(groups.groups.length),
+    reserva: '',
+    pool: { homens: [], mulheres: [] },
+  };
 }
 
 function calcFormat(n){
@@ -898,6 +1357,7 @@ function initFirebase(cfg, statusEl){
           state = migrateState(remote);
           localStorage.setItem('bt2_state', JSON.stringify(state));
           renderAll();
+          applyTheme();
         }
       }
       // Start listening for future changes from other devices
@@ -985,11 +1445,28 @@ function disconnectFirebase(){
   showToast('Firebase desconectado.');
 }
 
-function saveState(){
+function saveState(changedKey){
   state._lastWriteAt = Date.now();
-  fbLastWrite = state._lastWriteAt;
   localStorage.setItem('bt2_state', JSON.stringify(state));
-  if(fbRef) fbRef.set(state).catch(e => console.warn('Firebase write error:', e));
+  if(!fbRef) return;
+  if(changedKey){
+    const update = { _lastWriteAt: state._lastWriteAt };
+    update[changedKey] = state[changedKey];
+    fbRef.update(update).catch(e => console.warn('Firebase write error:', e));
+  } else {
+    fbRef.set(state).catch(e => console.warn('Firebase write error:', e));
+  }
+}
+
+// saveCat: saves only the changed key of the active category
+function saveCat(key){
+  const idx = getActiveCatIndex();
+  state._lastWriteAt = Date.now();
+  localStorage.setItem('bt2_state', JSON.stringify(state));
+  if(!fbRef) return;
+  const update = { _lastWriteAt: state._lastWriteAt };
+  update['categories'] = state.categories; // write full categories (simpler + reliable)
+  fbRef.update(update).catch(e => console.warn('Firebase write error:', e));
 }
 
 // Auto-connect: wait for Firebase SDK to be available, then connect
@@ -1001,10 +1478,10 @@ function saveState(){
     attempts++;
     if(typeof firebase !== 'undefined'){
       initFirebase(cfg, null);
-    } else if(attempts < 20){
-      setTimeout(tryConnect, 300); // retry every 300ms up to 6 seconds
+    } else if(attempts < 40){
+      setTimeout(tryConnect, 500); // retry every 500ms up to 20 seconds
     } else {
-      console.warn('Firebase SDK never loaded after 6s');
+      console.warn('Firebase SDK never loaded after 20s - check network');
     }
   }
   setTimeout(tryConnect, 500);
@@ -1014,7 +1491,7 @@ function saveState(){
 //  DUPLAS
 // =============================================
 function renderDuplas(){
-  const {duplas, groups, reserva} = state;
+  const cat = getActiveCat(); const {duplas, groups, reserva} = cat;
   const grid = document.getElementById('duplas-grid');
   grid.innerHTML = '';
   
@@ -1031,13 +1508,13 @@ function renderDuplas(){
     card.innerHTML = `
       <div class="dupla-num">${String(i+1).padStart(2,'0')}</div>
       <div class="dupla-names">
-        <div class="nm">👨 ${d.m}</div>
-        <div class="nf">👩 ${d.f}</div>
+        <div class="nm">${isMixedMode() ? '👨' : '👤'} ${d.m}</div>
+        ${isMixedMode() && d.f ? `<div class="nf">👩 ${d.f}</div>` : ''}
         <span class="dupla-group-badge ${gClass}" style="margin-top:5px">${gLabel}</span>
       </div>
       <div class="dupla-actions">
-        <button class="icon-btn" onclick="openDuplaModal(${i})" title="Editar">✏️</button>
-        <button class="icon-btn del" onclick="confirmDelete(${i})" title="Remover">🗑️</button>
+        <button class="icon-btn admin-only" onclick="openDuplaModal(${i})" title="Editar">✏️</button>
+        <button class="icon-btn del admin-only" onclick="confirmDelete(${i})" title="Remover">🗑️</button>
       </div>
     `;
     grid.appendChild(card);
@@ -1059,8 +1536,8 @@ function renderDuplas(){
 function openDuplaModal(idx){
   document.getElementById('modal-dupla-idx').value = idx === undefined ? -1 : idx;
   document.getElementById('modal-dupla-title').textContent = idx === undefined ? '➕ Nova Dupla' : '✏️ Editar Dupla '+(idx+1);
-  document.getElementById('md-m').value = idx !== undefined ? state.duplas[idx].m : '';
-  document.getElementById('md-f').value = idx !== undefined ? state.duplas[idx].f : '';
+  document.getElementById('md-m').value = idx !== undefined ? getActiveCat().duplas[idx].m : '';
+  document.getElementById('md-f').value = idx !== undefined ? getActiveCat().duplas[idx].f : '';
   document.getElementById('modal-dupla').classList.add('open');
   setTimeout(() => document.getElementById('md-m').focus(), 100);
 }
@@ -1072,11 +1549,11 @@ function saveDupla(){
   if(!m || !f){ showToast('⚠️ Preencha os dois nomes!'); return; }
   
   if(idx === -1){
-    state.duplas.push({m, f});
+    getActiveCat().duplas.push({m, f});
     regenGroupsAndMatches();
     showToast('✅ Dupla adicionada!');
   } else {
-    state.duplas[idx] = {m, f};
+    getActiveCat().duplas[idx] = {m, f};
     showToast('✅ Dupla '+String(idx+1)+' atualizada!');
   }
   saveState();
@@ -1085,7 +1562,7 @@ function saveDupla(){
 }
 
 function confirmDelete(idx){
-  const d = state.duplas[idx];
+  const d = getActiveCat().duplas[idx];
   document.getElementById('mc-title').textContent = '🗑️ Remover Dupla';
   document.getElementById('mc-text').textContent = `Remover a dupla ${idx+1}: ${d.m} / ${d.f}? Os resultados dos jogos dessa dupla serão apagados.`;
   document.getElementById('mc-confirm-btn').onclick = () => { deleteDupla(idx); closeModals(); };
@@ -1093,7 +1570,7 @@ function confirmDelete(idx){
 }
 
 function deleteDupla(idx){
-  state.duplas.splice(idx, 1);
+  getActiveCat().duplas.splice(idx, 1);
   regenGroupsAndMatches();
   saveState();
   renderAll();
@@ -1101,25 +1578,25 @@ function deleteDupla(idx){
 }
 
 function regenGroupsAndMatches(){
-  const newGroups = buildGroups(state.duplas);
+  const newGroups = buildGroups(getActiveCat().duplas);
   const newMatches = buildMatches(newGroups);
   // Preserve results for matches with same ID
   const oldMap = {};
-  state.matches.forEach(m => { oldMap[m.id] = m; });
+  getActiveCat().matches.forEach(m => { oldMap[m.id] = m; });
   newMatches.forEach(m => {
     if(oldMap[m.id]){ m.s1 = oldMap[m.id].s1; m.s2 = oldMap[m.id].s2; m.done = oldMap[m.id].done; }
   });
-  state.groups = newGroups;
-  state.matches = newMatches;
+  getActiveCat().groups = newGroups;
+  getActiveCat().matches = newMatches;
 }
 
 function sortearNovamente(){
-  if(state.duplas.length === 0){ showToast('⚠️ Nenhuma dupla para ressortear!'); return; }
+  if(getActiveCat().duplas.length === 0){ showToast('⚠️ Nenhuma dupla para ressortear!'); return; }
   if(!confirm('Ressortear: redistribuir os mesmos jogadores em novas duplas aleatórias? Os resultados serão apagados.')) return;
-  const ms = state.duplas.map(d => d.m);
-  const fs = state.duplas.map(d => d.f);
+  const ms = getActiveCat().duplas.map(d => d.m);
+  const fs = getActiveCat().duplas.map(d => d.f);
   shuffle(ms); shuffle(fs);
-  state.duplas = ms.map((m, i) => ({m, f:fs[i]}));
+  getActiveCat().duplas = ms.map((m, i) => ({m, f:fs[i]}));
   regenGroupsAndMatches();
   saveState();
   renderAll();
@@ -1134,8 +1611,8 @@ function resetDuplas(){
 }
 
 function editReserva(){
-  const n = prompt('Nome da reserva:', state.reserva);
-  if(n && n.trim()){ state.reserva = n.trim(); saveState(); renderDuplas(); showToast('✅ Reserva atualizada!'); }
+  const n = prompt('Nome da reserva:', getActiveCat().reserva);
+  if(n && n.trim()){ getActiveCat().reserva = n.trim(); saveCat('duplas'); renderDuplas(); showToast('✅ Reserva atualizada!'); }
 }
 
 function shuffle(arr){
@@ -1148,7 +1625,7 @@ function shuffle(arr){
 function renderPartidas(){
   const wrap = document.getElementById('partidas-wrap');
   wrap.innerHTML = '';
-  const {groups, matches, duplas} = state;
+  const cat = getActiveCat(); const {groups, matches, duplas} = cat;
   
   let done = 0, total = matches.length;
   matches.forEach(m => { if(m.done) done++; });
@@ -1193,16 +1670,16 @@ function renderPartidas(){
         <div class="match-num">${String(mi+1).padStart(2,'0')}</div>
         <div class="match-team">${d1.m}<br><span style="font-size:13px;font-weight:600;color:var(--teal)">${d1.f}</span></div>
         <div class="match-scores">
-          <input class="score-input" type="number" min="0" max="9" value="${s1v}" id="s1-${m.id}" placeholder="0" onchange="autoSaveScore('${m.id}')">
+          <input class="score-input" type="number" min="0" max="${getSport().maxScore}" value="${s1v}" id="s1-${m.id}" placeholder="0" onchange="autoSaveScore('${m.id}')">
           <span class="score-sep">×</span>
-          <input class="score-input" type="number" min="0" max="9" value="${s2v}" id="s2-${m.id}" placeholder="0" onchange="autoSaveScore('${m.id}')">
+          <input class="score-input" type="number" min="0" max="${getSport().maxScore}" value="${s2v}" id="s2-${m.id}" placeholder="0" onchange="autoSaveScore('${m.id}')">
         </div>
         <div class="match-team t2">${d2.m}<br><span style="font-size:13px;font-weight:600;color:var(--teal)">${d2.f}</span></div>
         <div class="match-actions">
           ${timeBadge}
           ${statusHtml}
           <button class="btn btn-success btn-sm" onclick="saveMatchResult('${m.id}')">💾</button>
-          ${m.done ? `<button class="btn btn-danger btn-sm" onclick="clearMatchResult('${m.id}')">✕</button>` : ''}
+          ${m.done ? `<button class="btn btn-danger btn-sm score-only" onclick="clearMatchResult('${m.id}')">✕</button>` : ''}
         </div>
       `;
       list.appendChild(row);
@@ -1218,14 +1695,14 @@ function autoSaveScore(id){
 }
 
 function saveMatchResult(id){
-  const m = state.matches.find(x => x.id === id);
+  const m = getActiveCat().matches.find(x => x.id === id);
   if(!m) return;
   const s1 = parseInt(document.getElementById('s1-'+id).value);
   const s2 = parseInt(document.getElementById('s2-'+id).value);
   if(isNaN(s1) || isNaN(s2)){ showToast('⚠️ Preencha os dois placares!'); return; }
   if(s1 === s2){ showToast('⚠️ Não pode empatar! (Beach Tennis)'); return; }
   m.s1 = s1; m.s2 = s2; m.done = true; m.live = false;
-  saveState();
+  saveCat('matches');
   renderPartidas();
   renderGrupos();
   renderChaveamento();
@@ -1233,10 +1710,10 @@ function saveMatchResult(id){
 }
 
 function clearMatchResult(id){
-  const m = state.matches.find(x => x.id === id);
+  const m = getActiveCat().matches.find(x => x.id === id);
   if(!m) return;
   m.s1 = null; m.s2 = null; m.done = false; m.live = false;
-  saveState();
+  saveCat('matches');
   renderPartidas();
   renderGrupos();
   renderChaveamento();
@@ -1245,7 +1722,7 @@ function clearMatchResult(id){
 
 function clearAllResults(){
   if(!confirm('Apagar TODOS os resultados? Esta ação não pode ser desfeita.')) return;
-  state.matches.forEach(m => { m.s1=null; m.s2=null; m.done=false; m.live=false; });
+  getActiveCat().matches.forEach(m => { m.s1=null; m.s2=null; m.done=false; m.live=false; });
   saveState();
   renderPartidas();
   renderGrupos();
@@ -1279,7 +1756,7 @@ function calcStandings(grpDuplas, matches, duplas){
 }
 
 function renderGrupos(){
-  const {groups, matches, duplas} = state;
+  const cat = getActiveCat(); const {groups, matches, duplas} = cat;
   const wrap = document.getElementById('standings-wrap');
   wrap.innerHTML = '';
   
@@ -1307,7 +1784,7 @@ function renderGrupos(){
     card.innerHTML = `
       <div class="standing-header sh-${GROUP_COLORS[gi]}">GRUPO ${GROUP_NAMES[gi]}<span class="badge">4 Duplas</span></div>
       <table class="st-table">
-        <thead><tr><th>#</th><th class="left">Dupla</th><th>J</th><th>V</th><th>D</th><th>GF/GA</th><th>Saldo</th><th>Pts</th></tr></thead>
+        <thead><tr><th>#</th><th class="left">${getSport().teamLabel}</th><th>J</th><th>V</th><th>D</th><th>${getSport().scoreLabel}</th><th>Saldo</th><th>Pts</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
     wrap.appendChild(card);
@@ -1322,7 +1799,7 @@ function renderGrupos(){
 //  CHAVEAMENTO
 // =============================================
 function getQualified(){
-  const {groups, matches, duplas} = state;
+  const cat = getActiveCat(); const {groups, matches, duplas} = cat;
   const {advancePerGroup} = calcFormat(duplas.length);
   const qualified = [];
   groups.groups.forEach((grp, gi) => {
@@ -1336,15 +1813,15 @@ function getQualified(){
 
 function teamLabel(di){
   if(di === undefined || di === null) return '—';
-  const d = state.duplas[di];
+  const d = getActiveCat().duplas[di];
   if(!d) return '—';
   return `${d.m} / ${d.f}`;
 }
 
 function renderChaveamento(){
   syncKnockoutTeams();
-  const {duplas} = state;
-  const km = state.knockoutMatches;
+  const cat = getActiveCat(); const duplas = cat.duplas;
+  const km = getActiveCat().knockoutMatches;
   const container = document.getElementById('bracket-container');
   container.innerHTML = '';
 
@@ -1376,9 +1853,9 @@ function renderChaveamento(){
 
     const scoreArea = bothKnown ? `
       <div class="match-scores">
-        <input class="score-input" type="number" min="0" max="20" id="ks1-${m.id}" value="${s1v}" placeholder="0">
+        <input class="score-input" type="number" min="0" max="${getSport().maxScore}" id="ks1-${m.id}" value="${s1v}" placeholder="0">
         <span class="score-sep">×</span>
-        <input class="score-input" type="number" min="0" max="20" id="ks2-${m.id}" value="${s2v}" placeholder="0">
+        <input class="score-input" type="number" min="0" max="${getSport().maxScore}" id="ks2-${m.id}" value="${s2v}" placeholder="0">
       </div>
       <div class="match-actions">
         ${koTimeBadge}
@@ -1422,8 +1899,8 @@ function renderChaveamento(){
 }
 
 function saveKnockoutResult(id){
-  if(!state.knockoutMatches) return;
-  const m = state.knockoutMatches.find(x=>x.id===id);
+  if(!getActiveCat().knockoutMatches) return;
+  const m = getActiveCat().knockoutMatches.find(x=>x.id===id);
   if(!m) return;
   const s1 = parseInt(document.getElementById('ks1-'+id).value);
   const s2 = parseInt(document.getElementById('ks2-'+id).value);
@@ -1437,18 +1914,18 @@ function saveKnockoutResult(id){
 }
 
 function clearKnockoutResult(id){
-  if(!state.knockoutMatches) return;
-  const m = state.knockoutMatches.find(x=>x.id===id);
+  if(!getActiveCat().knockoutMatches) return;
+  const m = getActiveCat().knockoutMatches.find(x=>x.id===id);
   if(!m) return;
   m.s1=null; m.s2=null; m.done=false; m.live=false;
   // clear downstream that depended on this result
   const order = ['qf1','qf2','qf3','qf4','sf1','sf2','fin','3rd'];
   let clear = false;
-  state.knockoutMatches.forEach(km => {
+  getActiveCat().knockoutMatches.forEach(km => {
     if(km.id===id) clear=true;
     if(clear && km.id!==id){ km.s1=null; km.s2=null; km.done=false; km.live=false; }
   });
-  saveState();
+  saveCat('knockoutMatches');
   renderChaveamento();
   renderLiveSelector();
   showToast('🗑️ Resultado apagado!');
@@ -1465,7 +1942,7 @@ function renderLiveSelector(){
   const sel = document.getElementById('live-select');
   const current = sel.value;
   sel.innerHTML = '<option value="">— Escolha uma partida —</option>';
-  const {groups, matches, duplas} = state;
+  const cat = getActiveCat(); const {groups, matches, duplas} = cat;
 
   // Group stage matches
   groups.groups.forEach((grp, gi) => {
@@ -1485,14 +1962,14 @@ function renderLiveSelector(){
   });
 
   // Knockout matches — grouped by round
-  if(state.knockoutMatches){
+  if(getActiveCat().knockoutMatches){
     const rounds = [
       { key:'qf',    label:'Quartas de Final' },
       { key:'sf',    label:'Semifinais' },
       { key:'final', label:'Final + 3º Lugar' },
     ];
     rounds.forEach(r => {
-      const rms = state.knockoutMatches.filter(m => m.round === r.key);
+      const rms = getActiveCat().knockoutMatches.filter(m => m.round === r.key);
       if(rms.length === 0) return;
       const og = document.createElement('optgroup');
       og.label = r.label;
@@ -1522,9 +1999,9 @@ function selectLiveMatch(){
   let m;
   if(id.startsWith('ko:')){
     const koId = id.slice(3);
-    m = state.knockoutMatches?.find(x => x.id === koId);
+    m = getActiveCat().knockoutMatches?.find(x => x.id === koId);
   } else {
-    m = state.matches.find(x => x.id === id);
+    m = getActiveCat().matches.find(x => x.id === id);
   }
   if(!m){ board.innerHTML = '<div class="no-match-msg">Partida não encontrada</div>'; return; }
   
@@ -1534,15 +2011,17 @@ function selectLiveMatch(){
   livePoints = {p1:0, p2:0};
   liveDeuce = false;
   liveAdv = 0;
+  liveTiebreak = false;
+  document.body.classList.remove('tiebreak-active');
   timerSeconds = 600;
   
   let d1, d2;
   if(matchInLive._isKnockout){
-    d1 = (m.di1 !== null && state.duplas[m.di1]) ? state.duplas[m.di1] : {m:'A definir',f:''};
-    d2 = (m.di2 !== null && state.duplas[m.di2]) ? state.duplas[m.di2] : {m:'A definir',f:''};
+    d1 = (m.di1 !== null && getActiveCat().duplas[m.di1]) ? getActiveCat().duplas[m.di1] : {m:'A definir',f:''};
+    d2 = (m.di2 !== null && getActiveCat().duplas[m.di2]) ? getActiveCat().duplas[m.di2] : {m:'A definir',f:''};
   } else {
-    d1 = state.duplas[m.d1] || {m:'?',f:'?'};
-    d2 = state.duplas[m.d2] || {m:'?',f:'?'};
+    d1 = getActiveCat().duplas[m.d1] || {m:'?',f:'?'};
+    d2 = getActiveCat().duplas[m.d2] || {m:'?',f:'?'};
   }
   
   board.innerHTML = `
@@ -1598,9 +2077,13 @@ function selectLiveMatch(){
         </div>
       </div>
     </div>
+    <div id="tiebreak-bar-indicator" style="display:none;background:rgba(240,180,41,.08);border-top:1px solid rgba(240,180,41,.2);padding:5px;text-align:center;">
+      <span class="tiebreak-badge">⚡ TIEBREAK EM ANDAMENTO</span>
+    </div>
     <div class="live-save-row">
-      <button class="btn btn-gold" onclick="markAsLive()">🔴 Ao Vivo</button>
-      <button class="btn btn-success" onclick="saveLiveResult()">✅ Salvar</button>
+      <button class="btn btn-gold score-only" onclick="markAsLive()">🔴 Ao Vivo</button>
+      <button class="btn btn-success score-only" onclick="saveLiveResult()">✅ Salvar</button>
+      ${usesTennisScoring() ? `<button class="btn btn-tiebreak score-only" id="btn-tiebreak" onclick="toggleTiebreak()">⚡ Tiebreak</button>` : ''}
       <button class="btn btn-danger" onclick="clearLiveScore()">↺ Zerar</button>
     </div>`;
   
@@ -1608,6 +2091,40 @@ function selectLiveMatch(){
 }
 
 const PT_LABELS = ['0','15','30','40'];
+
+
+function toggleTiebreak(){
+  liveTiebreak = !liveTiebreak;
+  livePoints = {p1:0, p2:0};
+  liveDeuce = false;
+  liveAdv = 0;
+  const indBar = document.getElementById('tiebreak-bar-indicator');
+  if(liveTiebreak){
+    document.body.classList.add('tiebreak-active');
+    if(indBar) indBar.style.display = '';
+  } else {
+    document.body.classList.remove('tiebreak-active');
+    if(indBar) indBar.style.display = 'none';
+  }
+  // Update button appearance
+  const btn = document.getElementById('btn-tiebreak');
+  if(btn){
+    btn.classList.toggle('active', liveTiebreak);
+    btn.textContent = liveTiebreak ? '⚡ Sair do Tiebreak' : '⚡ Tiebreak';
+  }
+  // Update point label
+  const tbBadge = document.getElementById('tiebreak-badge');
+  if(tbBadge) tbBadge.style.display = liveTiebreak ? 'inline-block' : 'none';
+  updatePointDisplay();
+}
+
+function isTiebreakMode(){
+  return liveTiebreak;
+}
+function usesTennisScoring(){
+  const s = getSport();
+  return s.id === 'beach_tennis' || s.id === 'tennis';
+}
 
 function getPointLabel(p, isDeuce, isAdv){
   if(isDeuce) return 'DEUCE';
@@ -1617,49 +2134,49 @@ function getPointLabel(p, isDeuce, isAdv){
 }
 
 function changePoint(team, delta){
-  if(liveDeuce){
-    // In deuce: can only advance adv
+  if(isTiebreakMode()){
+    // ── Tiebreak: contagem simples, ganhou com 7+ pts e diferença ≥ 2 ──
+    const sport = getSport();
+    // super tiebreak = 10pts (beach tennis padrão), regular = 7pts
+    const tbWin = (sport.id === 'beach_tennis') ? 10 : 7;
+    if(team===1){ livePoints.p1 = Math.max(0, livePoints.p1 + delta); }
+    else         { livePoints.p2 = Math.max(0, livePoints.p2 + delta); }
+    // Auto-detect win: tbWin+ points AND lead of 2
+    const p1 = livePoints.p1, p2 = livePoints.p2;
     if(delta > 0){
-      if(liveAdv === 0){ liveAdv = team; }
-      else if(liveAdv === team){
-        // won the game!
-        liveDeuce = false; liveAdv = 0;
-        livePoints = {p1:0, p2:0};
-        changeScore(team, 1);
-        return;
+      if(p1 >= tbWin && p1 - p2 >= 2){ changeScore(1,1); livePoints={p1:0,p2:0}; liveTiebreak=false; document.body.classList.remove('tiebreak-active'); const b=document.getElementById('btn-tiebreak'); if(b){b.classList.remove('active');b.textContent='⚡ Tiebreak';} updatePointDisplay(); return; }
+      if(p2 >= tbWin && p2 - p1 >= 2){ changeScore(2,1); livePoints={p1:0,p2:0}; liveTiebreak=false; document.body.classList.remove('tiebreak-active'); const b=document.getElementById('btn-tiebreak'); if(b){b.classList.remove('active');b.textContent='⚡ Tiebreak';} updatePointDisplay(); return; }
+    }
+  } else if(usesTennisScoring()){
+    // ── Tennis / Beach Tennis: 0 15 30 40 Deuce Vantagem ──
+    if(liveDeuce){
+      if(delta > 0){
+        if(liveAdv === 0){ liveAdv = team; }
+        else if(liveAdv === team){ liveDeuce=false; liveAdv=0; livePoints={p1:0,p2:0}; changeScore(team,1); return; }
+        else { liveAdv = 0; } // back to deuce
       } else {
-        // back to deuce
-        liveAdv = 0;
+        if(liveAdv === team){ liveAdv = 0; }
+        else if(liveAdv !== 0){ liveAdv = 0; }
+        else { liveDeuce=false; livePoints = team===1 ? {p1:2,p2:3} : {p1:3,p2:2}; }
       }
     } else {
-      if(liveAdv === team){ liveAdv = 0; }
-      else if(liveAdv !== 0){ liveAdv = 0; }
-      else { liveDeuce = false; livePoints = team===1 ? {p1:2,p2:3} : {p1:3,p2:2}; }
+      if(team===1){
+        if(delta > 0){
+          if(livePoints.p1 < 3){ livePoints.p1++; }
+          else { if(livePoints.p2 < 3){ changeScore(1,1); livePoints={p1:0,p2:0}; return; } else { liveDeuce=true; liveAdv=0; } }
+        } else { if(livePoints.p1 > 0) livePoints.p1--; }
+      } else {
+        if(delta > 0){
+          if(livePoints.p2 < 3){ livePoints.p2++; }
+          else { if(livePoints.p1 < 3){ changeScore(2,1); livePoints={p1:0,p2:0}; return; } else { liveDeuce=true; liveAdv=0; } }
+        } else { if(livePoints.p2 > 0) livePoints.p2--; }
+      }
     }
   } else {
-    // Normal point counting
-    if(team===1){
-      if(delta > 0){
-        if(livePoints.p1 < 3){ livePoints.p1++; }
-        else {
-          // Team1 at 40, win or deuce?
-          if(livePoints.p2 < 3){ changeScore(1,1); livePoints={p1:0,p2:0}; return; }
-          else { liveDeuce=true; liveAdv=0; }
-        }
-      } else {
-        if(livePoints.p1 > 0) livePoints.p1--;
-      }
-    } else {
-      if(delta > 0){
-        if(livePoints.p2 < 3){ livePoints.p2++; }
-        else {
-          if(livePoints.p1 < 3){ changeScore(2,1); livePoints={p1:0,p2:0}; return; }
-          else { liveDeuce=true; liveAdv=0; }
-        }
-      } else {
-        if(livePoints.p2 > 0) livePoints.p2--;
-      }
-    }
+    // ── Outros esportes: contagem simples ──
+    const maxP = getSport().maxScore || 99;
+    if(team===1){ livePoints.p1 = Math.min(maxP, Math.max(0, livePoints.p1 + delta)); }
+    else         { livePoints.p2 = Math.min(maxP, Math.max(0, livePoints.p2 + delta)); }
   }
   updatePointDisplay();
 }
@@ -1670,6 +2187,14 @@ function updatePointDisplay(){
   if(!el1 || !el2) return;
   
   let label1, label2;
+  if(isTiebreakMode() || !usesTennisScoring()){
+    // Simple numeric display (tiebreak or non-tennis sport)
+    label1 = String(livePoints.p1);
+    label2 = String(livePoints.p2);
+    el1.textContent = label1; el1.className = 'point-value';
+    el2.textContent = label2; el2.className = 'point-value';
+    return;
+  }
   if(liveDeuce){
     if(liveAdv===1){ label1='ADV'; label2='-'; }
     else if(liveAdv===2){ label1='-'; label2='ADV'; }
@@ -1690,8 +2215,9 @@ function updatePointDisplay(){
 }
 
 function changeScore(team, delta){
-  if(team===1) liveScore.s1 = Math.max(0, liveScore.s1 + delta);
-  else liveScore.s2 = Math.max(0, liveScore.s2 + delta);
+  const maxS = getSport().maxScore || 99;
+  if(team===1) liveScore.s1 = Math.min(maxS, Math.max(0, liveScore.s1 + delta));
+  else liveScore.s2 = Math.min(maxS, Math.max(0, liveScore.s2 + delta));
   const el1 = document.getElementById('slive1');
   const el2 = document.getElementById('slive2');
   if(el1) el1.textContent = liveScore.s1;
@@ -1702,10 +2228,10 @@ function changeScore(team, delta){
 
 function markAsLive(){
   if(!matchInLive) return;
-  state.matches.forEach(m => m.live = false);
-  if(state.knockoutMatches) state.knockoutMatches.forEach(m => m.live = false);
+  getActiveCat().matches.forEach(m => m.live = false);
+  if(getActiveCat().knockoutMatches) getActiveCat().knockoutMatches.forEach(m => m.live = false);
   matchInLive.live = true;
-  saveState();
+  saveCat('matches');
   if(matchInLive._isKnockout){ renderChaveamento(); }
   else { renderPartidas(); }
   showToast('🔴 Partida marcada como ao vivo!');
@@ -1719,7 +2245,7 @@ function saveLiveResult(){
   matchInLive.done = true;
   matchInLive.live = false;
   stopTimer();
-  saveState();
+  saveCat('matches');
   if(matchInLive._isKnockout){
     renderChaveamento();
     renderLiveSelector();
@@ -1736,6 +2262,8 @@ function clearLiveScore(){
   livePoints = {p1:0, p2:0};
   liveDeuce = false;
   liveAdv = 0;
+  liveTiebreak = false;
+  document.body.classList.remove('tiebreak-active');
   const el1 = document.getElementById('slive1');
   const el2 = document.getElementById('slive2');
   if(el1) el1.textContent = 0;
@@ -1811,9 +2339,10 @@ function showSection(id, btn){
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  btn.classList.add('active');
+  if(btn) btn.classList.add('active');
   if(id==='placar') renderLiveSelector();
   if(id==='cronograma') renderCronograma();
+  sessionStorage.setItem('bt_tab', id);
 }
 
 // =============================================
@@ -1840,7 +2369,7 @@ document.querySelectorAll('.modal-overlay').forEach(o => {
 function playerDot(p){ return p.adv ? '<span style="font-size:8px;opacity:.35;color:var(--muted);margin-right:4px;vertical-align:middle;">◆</span>' : '<span style="font-size:8px;opacity:0;margin-right:4px;">◆</span>'; }
 
 function renderPool(){
-  const pool = state.pool || {homens:[],mulheres:[]};
+  const pool = getActiveCat().pool || {homens:[],mulheres:[]};
   const hl = document.getElementById('pool-h-list');
   const ml = document.getElementById('pool-m-list');
   if(!hl||!ml) return;
@@ -1853,7 +2382,7 @@ function renderPool(){
     : pool.homens.map((p,i) => `
         <div class="pool-item">
           <span class="pool-item-name" onclick="toggleAdv('h',${i})" style="cursor:pointer;user-select:none;">${playerDot(p)}👨 ${p.name}</span>
-          <button class="pool-item-del" onclick="removeFromPool('h',${i})" title="Remover">🗑️</button>
+          <button class="pool-item-del admin-only" onclick="removeFromPool('h',${i})" title="Remover">🗑️</button>
         </div>`).join('');
 
   ml.innerHTML = pool.mulheres.length === 0
@@ -1861,7 +2390,7 @@ function renderPool(){
     : pool.mulheres.map((p,i) => `
         <div class="pool-item">
           <span class="pool-item-name" onclick="toggleAdv('m',${i})" style="cursor:pointer;user-select:none;">${playerDot(p)}👩 ${p.name}</span>
-          <button class="pool-item-del" onclick="removeFromPool('m',${i})" title="Remover">🗑️</button>
+          <button class="pool-item-del admin-only" onclick="removeFromPool('m',${i})" title="Remover">🗑️</button>
         </div>`).join('');
 
   // Balance message
@@ -1881,9 +2410,9 @@ function renderPool(){
 }
 
 function toggleAdv(gender, idx){
-  const list = gender === 'h' ? state.pool.homens : state.pool.mulheres;
+  const list = gender === 'h' ? getActiveCat().pool.homens : getActiveCat().pool.mulheres;
   list[idx].adv = !list[idx].adv;
-  saveState();
+  saveCat('pool');
   renderPool();
 }
 
@@ -1900,35 +2429,35 @@ function addToPool(){
   const gender = document.getElementById('modal-pool-gender').value;
   const name = document.getElementById('pool-name-input').value.trim();
   if(!name){ showToast('⚠️ Digite um nome!'); return; }
-  if(!state.pool) state.pool = {homens:[],mulheres:[]};
-  const list = gender === 'h' ? state.pool.homens : state.pool.mulheres;
+  if(!getActiveCat().pool) getActiveCat().pool = {homens:[],mulheres:[]};
+  const list = gender === 'h' ? getActiveCat().pool.homens : getActiveCat().pool.mulheres;
   if(list.some(p => p.name === name)){ showToast('⚠️ Já está no pool!'); return; }
   list.push({name, adv:false});
-  saveState();
+  saveCat('pool');
   closeModals();
   renderPool();
   showToast('✅ ' + name + ' adicionado(a) ao pool!');
 }
 
 function removeFromPool(gender, idx){
-  if(!state.pool) return;
-  const list = gender === 'h' ? state.pool.homens : state.pool.mulheres;
+  if(!getActiveCat().pool) return;
+  const list = gender === 'h' ? getActiveCat().pool.homens : getActiveCat().pool.mulheres;
   const name = list[idx].name || list[idx];
   list.splice(idx, 1);
-  saveState();
+  saveCat('pool');
   renderPool();
   showToast('🗑️ ' + name + ' removido(a) do pool!');
 }
 
 function clearPool(){
-  state.pool = {homens:[], mulheres:[]};
-  saveState();
+   getActiveCat().pool = {homens:[], mulheres:[]};
+  saveCat('pool');
   renderPool();
   showToast('🗑️ Pool limpo!');
 }
 
 function sortearDoPool(){
-  const pool = state.pool;
+  const pool = getActiveCat().pool;
   if(!pool || pool.homens.length === 0 || pool.mulheres.length === 0){
     showToast('⚠️ Adicione jogadores no Pool antes de sortear!');
     showSection('pool', document.querySelector('.nav-btn[onclick*="pool"]'));
@@ -1975,7 +2504,7 @@ function sortearDoPool(){
   const finalPairs = pairs.slice(0, min);
   shuffle(finalPairs);
 
-  state.duplas = finalPairs.map(p => ({m: p.h.name, f: p.m.name}));
+  getActiveCat().duplas = finalPairs.map(p => ({m: p.h.name, f: p.m.name}));
 
   // Leftover players → reserva
   const usedH = new Set(finalPairs.map(p=>p.h.name));
@@ -1984,7 +2513,7 @@ function sortearDoPool(){
     ...pool.homens.filter(p=>!usedH.has(p.name)).map(p=>p.name),
     ...pool.mulheres.filter(p=>!usedM.has(p.name)).map(p=>p.name)
   ];
-  if(reservaList.length > 0) state.reserva = reservaList.join(', ');
+  if(reservaList.length > 0) getActiveCat().reserva = reservaList.join(', ');
 
   regenGroupsAndMatches();
   saveState();
@@ -2001,8 +2530,8 @@ function minsToTime(mins){ const h=Math.floor(mins/60)%24; const m=mins%60; retu
 function calcSchedule(){
   const cfg = state.config || DEFAULT_CONFIG;
   const courts = 2;
-  const groups = state.groups.groups;
-  const allMatches = state.matches;
+  const groups = getActiveCat().groups.groups;
+  const allMatches = getActiveCat().matches;
 
   let cursor = timeToMins(cfg.startTime) + 15; // 15min opening
 
@@ -2062,7 +2591,7 @@ function getSchedulePreview(){
   const cfg = state.config || DEFAULT_CONFIG;
   const sc = calcSchedule();
   const fmt = (mins) => minsToTime(mins);
-  const totalMatches = state.matches.length;
+  const totalMatches = getActiveCat().matches.length;
   const courts = 2;
   const groupSlots = Math.ceil(totalMatches / courts);
   const groupsEndStr = fmt(sc.groupsEnd);
@@ -2080,20 +2609,57 @@ function getSchedulePreview(){
     🏁 Término previsto: <strong>${endStr}</strong>`;
 }
 
+function updateTeamModeOptions(){
+  const sportId = document.getElementById('cfg-sport').value;
+  const sport = SPORT_CONFIGS[sportId] || SPORT_CONFIGS.beach_tennis;
+  const sel = document.getElementById('cfg-team-mode');
+  const current = sel.value;
+  sel.innerHTML = sport.teamModes.map(tm => {
+    const info = TEAM_MODE_LABELS[tm] || { label: tm, icon: '👥' };
+    return `<option value="${tm}" ${tm===current?'selected':''}>${info.icon} ${info.label}</option>`;
+  }).join('');
+}
+
 function openConfigModal(){
   const cfg = state.config || DEFAULT_CONFIG;
+  // Render categories list
+  const catListEl = document.getElementById('cfg-categories-list');
+  if(catListEl){
+    const cats = state.categories || [];
+    catListEl.innerHTML = cats.length === 0
+      ? '<p style="color:var(--muted);font-size:13px;">Nenhuma categoria ainda.</p>'
+      : cats.map(c => `
+        <div style="display:flex;align-items:center;gap:8px;background:var(--night3);border:1px solid var(--border);border-radius:10px;padding:8px 12px;">
+          <span style="flex:1;font-size:13px;font-weight:600;">${c.name}</span>
+          <span style="font-size:11px;color:var(--muted);">${(TEAM_MODE_LABELS[c.teamMode]||{}).label||c.teamMode}</span>
+          ${cats.length > 1 ? `<button class="icon-btn del" onclick="deleteCategory('${c.id}')" title="Excluir">🗑️</button>` : ''}
+        </div>`).join('');
+  }
+  // Sport section
+  const sportSel = document.getElementById('cfg-sport');
+  if(sportSel){ sportSel.value = cfg.sport || 'beach_tennis'; updateTeamModeOptions(); }
+  const tmSel = document.getElementById('cfg-team-mode');
+  if(tmSel) tmSel.value = cfg.teamMode || 'misto';
+  const nameEl = document.getElementById('cfg-name');
+  if(nameEl) nameEl.value = cfg.tournamentName || 'Torneio Beach do FDS';
+  const acadEl = document.getElementById('cfg-academy');
+  if(acadEl) acadEl.value = cfg.academy || '';
+  // Time section
   document.getElementById('cfg-date').value    = cfg.date || '';
-  document.getElementById('cfg-start').value   = cfg.startTime;
-  document.getElementById('cfg-end').value     = cfg.endTime;
-  document.getElementById('cfg-group-dur').value = cfg.groupDur;
-  document.getElementById('cfg-break1').value  = cfg.break1;
-  document.getElementById('cfg-ko-dur').value  = cfg.koDur;
-  document.getElementById('cfg-lunch').value   = cfg.lunchDur;
-  document.getElementById('cfg-final-dur').value = cfg.finalDur;
-  document.getElementById('cfg-break2').value  = cfg.break2;
+  document.getElementById('cfg-start').value   = cfg.startTime || '09:00';
+  document.getElementById('cfg-end').value     = cfg.endTime   || '14:00';
+  document.getElementById('cfg-group-dur').value = cfg.groupDur || 12;
+  document.getElementById('cfg-break1').value  = cfg.break1  || 10;
+  document.getElementById('cfg-ko-dur').value  = cfg.koDur   || 20;
+  document.getElementById('cfg-lunch').value   = cfg.lunchDur|| 60;
+  document.getElementById('cfg-final-dur').value = cfg.finalDur||40;
+  document.getElementById('cfg-break2').value  = cfg.break2  || 5;
+  setTimeout(()=>{
+    const ap = document.getElementById('cfg-adminPass'); if(ap) ap.value = cfg.adminPass||'admin123';
+    const jp = document.getElementById('cfg-juizPass'); if(jp) jp.value = cfg.juizPass||'juiz123';
+  },50);
   updateConfigPreview();
   document.getElementById('modal-config').classList.add('open');
-  // live preview on input change
   ['cfg-date','cfg-start','cfg-end','cfg-group-dur','cfg-break1','cfg-ko-dur','cfg-lunch','cfg-final-dur','cfg-break2'].forEach(id => {
     const el = document.getElementById(id);
     if(el) el.oninput = updateConfigPreview;
@@ -2109,28 +2675,83 @@ function updateConfigPreview(){
 }
 
 function readConfigForm(){
+  const sportEl = document.getElementById('cfg-sport');
+  const tmEl    = document.getElementById('cfg-team-mode');
+  const nameEl  = document.getElementById('cfg-name');
+  const acadEl  = document.getElementById('cfg-academy');
+  const cfg = state.config || {};
   return {
+    sport:          (sportEl && sportEl.value) || cfg.sport || 'beach_tennis',
+    teamMode:       (tmEl    && tmEl.value)    || cfg.teamMode || 'misto',
+    tournamentName: (nameEl  && nameEl.value.trim()) || cfg.tournamentName || 'Torneio Beach do FDS',
+    academy:        (acadEl  && acadEl.value.trim()) || cfg.academy || '',
     date:      document.getElementById('cfg-date').value,
     startTime: document.getElementById('cfg-start').value || '09:00',
-    endTime:   document.getElementById('cfg-end').value || '14:00',
+    endTime:   document.getElementById('cfg-end').value   || '14:00',
     groupDur:  parseInt(document.getElementById('cfg-group-dur').value) || 12,
-    break1:    parseInt(document.getElementById('cfg-break1').value) || 10,
-    koDur:     parseInt(document.getElementById('cfg-ko-dur').value) || 20,
-    lunchDur:  parseInt(document.getElementById('cfg-lunch').value) || 60,
+    break1:    parseInt(document.getElementById('cfg-break1').value)    || 10,
+    koDur:     parseInt(document.getElementById('cfg-ko-dur').value)    || 20,
+    lunchDur:  parseInt(document.getElementById('cfg-lunch').value)     || 60,
     finalDur:  parseInt(document.getElementById('cfg-final-dur').value) || 40,
-    break2:    parseInt(document.getElementById('cfg-break2').value) || 5,
+    break2:    parseInt(document.getElementById('cfg-break2').value)    || 5,
+    adminPass: cfg.adminPass || 'admin123',
+    juizPass:  cfg.juizPass  || 'juiz123',
   };
 }
 
 function saveConfig(){
   state.config = readConfigForm();
-  saveState();
+  const ap = document.getElementById("cfg-adminPass"); if(ap && ap.value.trim()) state.config.adminPass = ap.value.trim();
+  const jp = document.getElementById("cfg-juizPass"); if(jp && jp.value.trim()) state.config.juizPass = jp.value.trim();
+  saveState('config');
   closeModals();
+  applyTheme();
   updateHeroMeta();
-  renderPartidas();
-  renderChaveamento();
-  renderCronograma();
+  renderAll();
   showToast('✅ Configurações salvas!');
+}
+
+function applyTheme(){
+  const sport = getSport();
+  const cat   = getActiveCat();
+  const tm    = (cat && cat.teamMode) || getTeamMode();
+  const tmInfo = TEAM_MODE_LABELS[tm] || { label:'Duplas Mistas', icon:'👫' };
+  const cfg   = state.config || DEFAULT_CONFIG;
+  // Update hero badge
+  const badge = document.getElementById('hero-badge-text');
+  if(badge) badge.textContent = (cfg.academy || sport.courtEmoji + ' ' + tmInfo.label);
+  // Update hero title
+  const h1 = document.getElementById('hero-title');
+  if(h1){
+    const name = cfg.tournamentName || 'Torneio Beach do FDS';
+    const parts = name.split(' ');
+    const first = parts[0];
+    const rest  = parts.slice(1).join(' ');
+    h1.innerHTML = first + (rest ? '<span>' + rest + '</span>' : '');
+  }
+  // Show/hide pool female column based on teamMode
+  const isMixed = isMixedMode();
+  const femCol = document.getElementById('pool-mulheres-col');
+  if(femCol) femCol.style.display = isMixed ? '' : 'none';
+  const homCol = document.getElementById('pool-homens-col');
+  if(homCol){
+    homCol.style.gridColumn = isMixed ? '' : '1/-1';
+    const title = homCol.querySelector('.pool-col-title');
+    if(title){
+      const pl = sport.playerLabel;
+      title.textContent = isMixed ? ('👨 ' + pl.m + 's') : ('👤 Jogadores');
+    }
+  }
+  // Update score inputs max based on sport scoring
+  document.querySelectorAll('.score-input').forEach(el => {
+    el.max = sport.maxScore;
+  });
+  // Update sortear button text
+  const sortBtn = document.getElementById('btn-sortear-pool');
+  if(sortBtn){
+    const tmInfo = TEAM_MODE_LABELS[getTeamMode()] || { label: 'Duplas' };
+    sortBtn.textContent = '🎲 Sortear ' + tmInfo.label;
+  }
 }
 
 function updateHeroMeta(){
@@ -2155,7 +2776,7 @@ function renderCronograma(){
   if(!wrap) return;
   const cfg = state.config || DEFAULT_CONFIG;
   const sc = calcSchedule();
-  const totalMatches = state.matches.length;
+  const totalMatches = getActiveCat().matches.length;
   const courts = 2;
   const groupSlots = Math.ceil(totalMatches / courts);
   const T = (mins) => minsToTime(mins);
@@ -2258,6 +2879,7 @@ function doPublicar(){
 }
 
 function renderAll(){
+  renderCategoryTabs();
   renderDuplas();
   renderPool();
   renderPartidas();
@@ -2267,6 +2889,16 @@ function renderAll(){
 }
 
 renderAll();
+applyRole(currentRole);
+applyTheme();
+// Restore last active tab
+(function restoreTab(){
+  const lastTab = sessionStorage.getItem('bt_tab');
+  if(lastTab){
+    const btn = document.querySelector(`.nav-btn[onclick*="'${lastTab}'"]`);
+    if(btn) showSection(lastTab, btn);
+  }
+})();
 </script>
 <!-- PUBLISH MODAL -->
 <div class="modal-overlay" id="modal-publish">
@@ -2294,6 +2926,57 @@ renderAll();
     </div>
   </div>
 </div>
+<!-- ROLE LOGIN MODAL -->
+<div class="modal-overlay" id="modal-role">
+  <div class="modal" style="max-width:380px;">
+    <h2>🔐 Acesso</h2>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:6px;">
+      Modo atual: <strong id="role-current-label">Participante</strong>
+    </p>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:20px;line-height:1.6;">
+      Digite a senha de <strong>Admin</strong> ou <strong>Juiz</strong> para acessar funções extras.
+    </p>
+    <div class="form-group">
+      <label>Senha</label>
+      <input class="form-input" id="role-pass-input" type="password" placeholder="Digite a senha..." onkeydown="if(event.key==='Enter')submitRolePassword()">
+    </div>
+    <div id="role-modal-status" style="font-size:13px;min-height:20px;margin-bottom:8px;"></div>
+    <div class="modal-actions" style="justify-content:space-between;">
+      <button class="btn btn-danger btn-sm" onclick="logoutRole()" style="margin-right:auto;">Sair / Participante</button>
+      <button class="btn btn-secondary" onclick="closeModals()">Cancelar</button>
+      <button class="btn btn-primary" onclick="submitRolePassword()">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW CATEGORY MODAL -->
+<div class="modal-overlay" id="modal-newcat">
+  <div class="modal" style="max-width:380px;">
+    <h2>➕ Nova Categoria</h2>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:20px;">Cada categoria tem pool, grupos e chaveamento independentes.</p>
+    <div class="form-group">
+      <label>Nome da Categoria</label>
+      <input class="form-input" id="newcat-name" type="text" placeholder="Ex: Masculino A, Misto Open..." onkeydown="if(event.key==='Enter')saveNewCategory()">
+    </div>
+    <div class="form-group">
+      <label>Modalidade</label>
+      <select class="form-input" id="newcat-teammode">
+        <option value="misto">👫 Duplas Mistas</option>
+        <option value="masculino">👨 Masculino</option>
+        <option value="feminino">👩 Feminino</option>
+        <option value="dupla_m">👬 Duplas Masculinas</option>
+        <option value="dupla_f">👭 Duplas Femininas</option>
+        <option value="individual_m">🧍 Individual Masculino</option>
+        <option value="individual_f">🧍 Individual Feminino</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModals()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveNewCategory()">✅ Criar Categoria</button>
+    </div>
+  </div>
+</div>
+
 
 </body>
 </html>
