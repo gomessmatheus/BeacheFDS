@@ -401,7 +401,8 @@ body.tiebreak-active .score-live{color:var(--gold);}
   <h2 class="section-title">Pool de Participantes</h2>
   <p class="section-sub" id="pool-section-sub">Gerencie a lista de jogadores disponíveis.</p>
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
-    <button class="btn btn-secondary btn-sm admin-only" onclick="openImportModal()">📥 Importar Jogadores</button>
+    <button class="btn btn-secondary btn-sm admin-only" onclick="openImportModal()">📥 Importar</button>
+    <button class="btn btn-primary btn-sm admin-only" id="btn-add-preformed-dupla" style="display:none" onclick="openAddPreformedDupla()">➕ Cadastrar Dupla</button>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;" id="pool-grid">
     <div class="pool-col" id="pool-homens-col">
@@ -568,6 +569,12 @@ body.tiebreak-active .score-live{color:var(--gold);}
           <label>🏫 Academia / Local</label>
           <input class="form-input" type="text" id="cfg-academy" placeholder="Ex: Academia XYZ">
         </div>
+        <div class="form-group" style="grid-column:1/-1;">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:normal;">
+            <input type="checkbox" id="cfg-preformed" style="width:16px;height:16px;accent-color:var(--teal)">
+            <span>🤝 Duplas pré-formadas <span style="color:var(--muted);font-size:12px;">(inscrição já em dupla, sem sorteio)</span></span>
+          </label>
+        </div>
       </div>
     </div>
 
@@ -676,7 +683,7 @@ body.tiebreak-active .score-live{color:var(--gold);}
 </footer>
 
 <script id="baked-data" type="application/json">{"firebase": {"apiKey": "AIzaSyDq9JYdXj59rLrd_LIUpnhaWHJMJBElE9Q", "authDomain": "torneio-bt-ff5eb.firebaseapp.com", "databaseURL": "https://torneio-bt-ff5eb-default-rtdb.firebaseio.com", "projectId": "torneio-bt-ff5eb", "storageBucket": "torneio-bt-ff5eb.firebasestorage.app", "messagingSenderId": "428661352937", "appId": "1:428661352937:web:963023b8780645ea51c378"}}</script>
-<script id="baked-data" type="application/json">{"firebase": {"apiKey": "AIzaSyDq9JYdXj59rLrd_LIUpnhaWHJMJBElE9Q", "authDomain": "torneio-bt-ff5eb.firebaseapp.com", "databaseURL": "https://torneio-bt-ff5eb-default-rtdb.firebaseio.com", "projectId": "torneio-bt-ff5eb", "storageBucket": "torneio-bt-ff5eb.firebasestorage.app", "messagingSenderId": "428661352937", "appId": "1:428661352937:web:963023b8780645ea51c378"}}</script>
+
 <script>
 // =============================================
 //  STATE
@@ -953,6 +960,7 @@ const DEFAULT_CONFIG = {
   adminPass: 'admin123',
   juizPass:  'juiz123',
   sport: 'beach_tennis',
+  preformed: false,
   rules: null,
   teamMode: 'misto',
   tournamentName: 'Torneio Beach do FDS',
@@ -2164,8 +2172,9 @@ function changePoint(team, delta){
       if(p2 >= tbWin && p2 - p1 >= 2){ changeScore(2,1); livePoints={p1:0,p2:0}; liveTiebreak=false; document.body.classList.remove('tiebreak-active'); const b=document.getElementById('btn-tiebreak'); if(b){b.classList.remove('active');b.textContent='⚡ Tiebreak';} updatePointDisplay(); return; }
     }
   } else if(usesTennisScoring()){
-    // ── Tennis / Beach Tennis: 0 15 30 40 Deuce Vantagem ──
-    if(liveDeuce){
+    // ── Tennis: 0 15 30 40 Deuce/Vantagem | Beach Tennis: 0 15 30 40 (sem deuce) ──
+    const hasDeuce = getSport().id === 'tennis'; // só tênis tem deuce
+    if(liveDeuce && hasDeuce){
       if(delta > 0){
         if(liveAdv === 0){ liveAdv = team; }
         else if(liveAdv === team){ liveDeuce=false; liveAdv=0; livePoints={p1:0,p2:0}; changeScore(team,1); return; }
@@ -2179,12 +2188,19 @@ function changePoint(team, delta){
       if(team===1){
         if(delta > 0){
           if(livePoints.p1 < 3){ livePoints.p1++; }
-          else { if(livePoints.p2 < 3){ changeScore(1,1); livePoints={p1:0,p2:0}; return; } else { liveDeuce=true; liveAdv=0; } }
+          else {
+            // At 40: win regardless of opponent score (beach tennis) or only if opp < 40 (tennis with deuce)
+            if(!hasDeuce || livePoints.p2 < 3){ changeScore(1,1); livePoints={p1:0,p2:0}; return; }
+            else { liveDeuce=true; liveAdv=0; }
+          }
         } else { if(livePoints.p1 > 0) livePoints.p1--; }
       } else {
         if(delta > 0){
           if(livePoints.p2 < 3){ livePoints.p2++; }
-          else { if(livePoints.p1 < 3){ changeScore(2,1); livePoints={p1:0,p2:0}; return; } else { liveDeuce=true; liveAdv=0; } }
+          else {
+            if(!hasDeuce || livePoints.p1 < 3){ changeScore(2,1); livePoints={p1:0,p2:0}; return; }
+            else { liveDeuce=true; liveAdv=0; }
+          }
         } else { if(livePoints.p2 > 0) livePoints.p2--; }
       }
     }
@@ -2400,6 +2416,7 @@ function renderPool(){
     : pool.homens.map((p,i) => `
         <div class="pool-item">
           <span class="pool-item-name" onclick="toggleAdv('h',${i})" style="cursor:pointer;user-select:none;">${playerDot(p)}👨 ${p.name}</span>
+          ${p.cat ? `<span style="font-size:10px;background:rgba(43,191,176,.12);color:var(--teal);border-radius:5px;padding:2px 7px;white-space:nowrap;">${p.cat}</span>` : ''}
           <button class="pool-item-del admin-only" onclick="removeFromPool('h',${i})" title="Remover">🗑️</button>
         </div>`).join('');
 
@@ -2408,6 +2425,7 @@ function renderPool(){
     : pool.mulheres.map((p,i) => `
         <div class="pool-item">
           <span class="pool-item-name" onclick="toggleAdv('m',${i})" style="cursor:pointer;user-select:none;">${playerDot(p)}👩 ${p.name}</span>
+          ${p.cat ? `<span style="font-size:10px;background:rgba(43,191,176,.12);color:var(--teal);border-radius:5px;padding:2px 7px;white-space:nowrap;">${p.cat}</span>` : ''}
           <button class="pool-item-del admin-only" onclick="removeFromPool('m',${i})" title="Remover">🗑️</button>
         </div>`).join('');
 
@@ -2754,6 +2772,8 @@ function openConfigModal(){
   if(sportSel){ sportSel.value = cfg.sport || 'beach_tennis'; updateTeamModeOptions(); }
   const tmSel = document.getElementById('cfg-team-mode');
   if(tmSel) tmSel.value = cfg.teamMode || 'misto';
+  const pfEl = document.getElementById('cfg-preformed');
+  if(pfEl) pfEl.checked = !!cfg.preformed;
   const nameEl = document.getElementById('cfg-name');
   if(nameEl) nameEl.value = cfg.tournamentName || 'Torneio Beach do FDS';
   const acadEl = document.getElementById('cfg-academy');
@@ -2802,6 +2822,7 @@ function readConfigForm(){
   return {
     sport:          (sportEl  && sportEl.value)  || cfg.sport || 'beach_tennis',
     teamMode:       (tmEl     && tmEl.value)     || cfg.teamMode || 'misto',
+    preformed:      !!(document.getElementById('cfg-preformed') || {}).checked,
     tournamentName: (nameEl   && nameEl.value.trim()) || cfg.tournamentName || 'Torneio Beach do FDS',
     academy:        (acadEl   && acadEl.value.trim()) || cfg.academy || '',
     numCourts:      parseInt((courtsEl && courtsEl.value) || cfg.numCourts || 2),
@@ -2868,12 +2889,19 @@ function applyTheme(){
   document.querySelectorAll('.score-input').forEach(el => {
     el.max = sport.maxScore;
   });
-  // Update sortear button text
+  // Update sortear button text + preformed toggle
+  const isPreformed = !!(state.config && state.config.preformed);
   const sortBtn = document.getElementById('btn-sortear-pool');
   if(sortBtn){
     const tmInfo = TEAM_MODE_LABELS[getTeamMode()] || { label: 'Duplas' };
     sortBtn.textContent = '🎲 Sortear ' + tmInfo.label;
+    sortBtn.style.display = isPreformed ? 'none' : '';
   }
+  const pfBtn = document.getElementById('btn-add-preformed-dupla');
+  if(pfBtn) pfBtn.style.display = isPreformed ? '' : 'none';
+  // Also hide top sortear button in duplas section
+  const sortBtn2 = document.querySelector('.admin-only[onclick="sortearDoPool()"]');
+  if(sortBtn2) sortBtn2.style.display = isPreformed ? 'none' : '';
 }
 
 function updateHeroMeta(){
@@ -3085,6 +3113,83 @@ function doPublicar(){
 
 
 
+
+// ── PRE-FORMED DUPLAS ────────────────────────────────────────────────
+function openAddPreformedDupla(editIdx){
+  const modal = document.getElementById('modal-preformed-dupla');
+  if(!modal) return;
+  const cats = state.categories || [];
+  const isMixed = isMixedMode();
+  document.getElementById('pf-idx').value = editIdx !== undefined ? editIdx : -1;
+  // Populate category selector
+  const catSel = document.getElementById('pf-cat');
+  if(catSel) catSel.innerHTML = cats.map(c => `<option value="${c.id}" ${c.id===getActiveCat().id?'selected':''}>${c.name}</option>`).join('');
+  // Labels
+  document.getElementById('pf-p1-label').textContent = isMixed ? '👨 Jogador (Masculino)' : '👤 Jogador 1';
+  const p2wrap = document.getElementById('pf-p2-wrap');
+  if(p2wrap) p2wrap.style.display = isMixed ? '' : 'none';
+  // Fill values if editing
+  if(editIdx >= 0){
+    const d = getActiveCat().duplas[editIdx];
+    document.getElementById('pf-p1').value = d ? d.m : '';
+    document.getElementById('pf-p2').value = d ? (d.f||'') : '';
+  } else {
+    document.getElementById('pf-p1').value = '';
+    document.getElementById('pf-p2').value = '';
+  }
+  document.getElementById('pf-modal-title').textContent = editIdx >= 0 ? '✏️ Editar Dupla' : '➕ Cadastrar Dupla';
+  modal.classList.add('open');
+  setTimeout(() => document.getElementById('pf-p1').focus(), 80);
+}
+
+function savePreformedDupla(){
+  const idx   = parseInt(document.getElementById('pf-idx').value);
+  const p1    = document.getElementById('pf-p1').value.trim();
+  const p2el  = document.getElementById('pf-p2');
+  const p2    = p2el ? p2el.value.trim() : '';
+  const catId = (document.getElementById('pf-cat')||{}).value;
+  if(!p1){ showToast('⚠️ Preencha o nome do jogador.'); return; }
+  // Find target category
+  const targetCat = (state.categories||[]).find(c=>c.id===catId) || getActiveCat();
+  const isMixed = (TEAM_MODE_LABELS[targetCat.teamMode]||{}).hasFemale !== false;
+  const dupla = { m: p1, f: isMixed ? p2 : '' };
+  if(idx === -1){
+    targetCat.duplas.push(dupla);
+  } else {
+    targetCat.duplas[idx] = dupla;
+  }
+  // Rebuild groups preserving existing scores
+  const oldMap = {};
+  (targetCat.matches||[]).forEach(m => { oldMap[m.id] = m; });
+  targetCat.groups  = buildGroups(targetCat.duplas);
+  const newMatches  = buildMatches(targetCat.groups);
+  targetCat.matches = newMatches.map(m => oldMap[m.id] ? {...m, s1:oldMap[m.id].s1, s2:oldMap[m.id].s2, done:oldMap[m.id].done} : m);
+  targetCat.knockoutMatches = buildKnockoutMatches(targetCat.groups.groups.length);
+  // Mirror to pool (so pool shows the players)
+  if(!targetCat.pool) targetCat.pool = {homens:[], mulheres:[]};
+  if(!targetCat.pool.homens.find(x=>x.name===p1))
+    targetCat.pool.homens.push({name:p1, adv:false, cat:targetCat.name});
+  if(isMixed && p2 && !targetCat.pool.mulheres.find(x=>x.name===p2))
+    targetCat.pool.mulheres.push({name:p2, adv:false, cat:targetCat.name});
+  saveState('categories');
+  closeModals();
+  renderAll();
+  applyTheme();
+  showToast(idx===-1 ? '✅ Dupla cadastrada!' : '✅ Dupla atualizada!');
+}
+
+function deletePreformedDupla(idx){
+  if(!confirm('Excluir esta dupla?')) return;
+  const cat = getActiveCat();
+  cat.duplas.splice(idx,1);
+  cat.groups  = buildGroups(cat.duplas);
+  cat.matches = buildMatches(cat.groups);
+  cat.knockoutMatches = buildKnockoutMatches(cat.groups.groups.length);
+  saveState('categories');
+  renderAll();
+  showToast('🗑️ Dupla removida.');
+}
+// ─────────────────────────────────────────────────────────────────────
 // ── POOL IMPORT ──────────────────────────────────────────────────────
 let _importParsed = []; // [{name, gender, category, nivel}]
 
@@ -3110,7 +3215,6 @@ function switchImportTab(tab){
   });
 }
 
-// ── Column name normalizer ──
 function normalizeColName(n){
   return n.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
 }
@@ -3119,10 +3223,13 @@ function detectColumns(headers){
   const map = {};
   headers.forEach((h,i) => {
     const n = normalizeColName(h);
-    if(!map.nome  && ['nome','name','jogador','player','participante'].includes(n)) map.nome = i;
-    if(!map.gender && ['genero','gender','sexo','m_f','mf','sex'].includes(n)) map.gender = i;
-    if(!map.cat   && ['categoria','category','cat','modalidade','tipo'].includes(n)) map.cat = i;
-    if(!map.nivel && ['nivel','level','classe','ranking','category2'].includes(n)) map.nivel = i;
+    if(map.nome===undefined    && ['nome','name','jogador','jogador1','player','player1','participante','nomejogador1'].includes(n)) map.nome = i;
+    if(map.gender===undefined  && ['genero','genero1','gender','gender1','sexo','mf','sex'].includes(n)) map.gender = i;
+    if(map.nome2===undefined   && ['jogador2','player2','parceiro','dupla','nomejogador2'].includes(n)) map.nome2 = i;
+    if(map.gender2===undefined && ['genero2','gender2','sexo2'].includes(n)) map.gender2 = i;
+    if(map.cat===undefined     && ['categoria','category','cat','modalidade','tipo'].includes(n)) map.cat = i;
+    if(map.nivel===undefined   && ['nivel','level','classe','ranking'].includes(n)) map.nivel = i;
+    if(map.phone===undefined   && ['whatsapp','contato','telefone','phone','celular'].includes(n)) map.phone = i;
   });
   return map;
 }
@@ -3135,16 +3242,23 @@ function normalizeGender(v){
 
 function parseRows(rows, headers){
   const colMap = detectColumns(headers);
-  if(colMap.nome === undefined){
-    // Try first column as name
-    colMap.nome = 0;
-  }
-  return rows.filter(r => r[colMap.nome] && String(r[colMap.nome]).trim()).map(r => ({
-    name:     String(r[colMap.nome]).trim(),
-    gender:   colMap.gender !== undefined ? normalizeGender(r[colMap.gender]) : 'M',
-    category: colMap.cat !== undefined ? String(r[colMap.cat]||'').trim() : '',
-    nivel:    colMap.nivel !== undefined ? String(r[colMap.nivel]||'').trim() : '',
-  }));
+  if(colMap.nome === undefined) colMap.nome = 0;
+  const result = [];
+  rows.filter(r => r[colMap.nome] && String(r[colMap.nome]).trim()).forEach(r => {
+    const p1name = String(r[colMap.nome]).trim();
+    const p1gender = colMap.gender !== undefined ? normalizeGender(r[colMap.gender]) : 'M';
+    const cat   = colMap.cat !== undefined ? String(r[colMap.cat]||'').trim() : '';
+    const nivel = colMap.nivel !== undefined ? String(r[colMap.nivel]||'').trim() : '';
+    const phone = colMap.phone !== undefined ? String(r[colMap.phone]||'').trim() : '';
+    result.push({ name:p1name, gender:p1gender, category:cat, nivel, phone });
+    // If jogador2 column exists, also add partner as a player
+    if(colMap.nome2 !== undefined && r[colMap.nome2] && String(r[colMap.nome2]).trim()){
+      const p2name = String(r[colMap.nome2]).trim();
+      const p2gender = colMap.gender2 !== undefined ? normalizeGender(r[colMap.gender2]) : (p1gender==='M'?'F':'M');
+      result.push({ name:p2name, gender:p2gender, category:cat, nivel, phone, _pair: p1name });
+    }
+  });
+  return result;
 }
 
 function showImportPreview(parsed){
@@ -3283,7 +3397,6 @@ function importToCurrentPool(players){
 }
 
 function importWithAutoDistribute(players){
-  // Group players by their category field
   const byCategory = {};
   players.forEach(p => {
     const catKey = p.category || 'Geral';
@@ -3291,39 +3404,67 @@ function importWithAutoDistribute(players){
     byCategory[catKey].push(p);
   });
 
-  let totalAdded = 0;
+  let totalPlayers = 0, totalDuplas = 0;
   const catKeys = Object.keys(byCategory);
-  
+  const isPreformed = !!(state.config && state.config.preformed);
+
   catKeys.forEach(catName => {
-    // Find or create a matching tournament category
-    let tourCat = (state.categories || []).find(c =>
-      c.name.toLowerCase() === catName.toLowerCase() ||
-      c.teamMode === catName.toLowerCase()
-    );
+    // Find or create matching tournament category
+    let tourCat = (state.categories||[]).find(c => c.name.toLowerCase()===catName.toLowerCase());
     if(!tourCat){
-      // Auto-detect team mode from category name
       const nm = catName.toLowerCase();
       let teamMode = 'misto';
-      if(nm.includes('masc') || nm.includes('m ') || nm === 'm') teamMode = 'masculino';
-      else if(nm.includes('fem') || nm.includes('f ') || nm === 'f') teamMode = 'feminino';
+      if(nm.includes('masc') || nm==='m') teamMode = 'masculino';
+      else if(nm.includes('fem') || nm==='f') teamMode = 'feminino';
       addCategory(catName, teamMode);
       tourCat = state.categories[state.categories.length-1];
     }
-    
-    // Add players to category pool
-    byCategory[catName].forEach(p => {
-      const list = tourCat.pool[p.gender==='F' ? 'mulheres' : 'homens'];
-      if(!list.find(x => x.name === p.name)){
-        list.push({ name: p.name, adv: false });
-        totalAdded++;
-      }
-    });
+    if(!tourCat.pool) tourCat.pool = {homens:[], mulheres:[]};
+
+    const playersInCat = byCategory[catName];
+
+    if(isPreformed){
+      // Pair mode: players with _pair field are partners of another player
+      // Build duplas from pairs
+      const paired = new Set();
+      playersInCat.forEach(p => {
+        if(paired.has(p.name)) return;
+        const partner = playersInCat.find(q => q._pair===p.name || p._pair===q.name);
+        if(partner){
+          paired.add(p.name); paired.add(partner.name);
+          const isMixed = (TEAM_MODE_LABELS[tourCat.teamMode]||{}).hasFemale !== false;
+          const m = p.gender==='M' ? p : partner;
+          const f = p.gender==='F' ? p : partner;
+          const dupla = isMixed ? {m:m.name, f:f.name} : {m:p.name, f:''};
+          if(!tourCat.duplas.find(d=>d.m===dupla.m)) { tourCat.duplas.push(dupla); totalDuplas++; }
+        } else {
+          // Solo entry
+          const list = tourCat.pool[p.gender==='F'?'mulheres':'homens'];
+          if(!list.find(x=>x.name===p.name)){ list.push({name:p.name,adv:false,cat:catName}); totalPlayers++; }
+        }
+      });
+      // Rebuild groups for this category
+      const oldMap = {};
+      (tourCat.matches||[]).forEach(m=>oldMap[m.id]=m);
+      tourCat.groups  = buildGroups(tourCat.duplas);
+      tourCat.matches = buildMatches(tourCat.groups).map(m=>oldMap[m.id]?{...m,...oldMap[m.id]}:m);
+      tourCat.knockoutMatches = buildKnockoutMatches(tourCat.groups.groups.length);
+    } else {
+      // Pool mode: just add to pool
+      playersInCat.forEach(p => {
+        const list = tourCat.pool[p.gender==='F'?'mulheres':'homens'];
+        if(!list.find(x=>x.name===p.name)){ list.push({name:p.name,adv:false,cat:catName}); totalPlayers++; }
+      });
+    }
   });
 
   saveState('categories');
   renderCategoryTabs();
-  renderPool();
-  showToast(`✅ ${totalAdded} jogador(es) distribuído(s) em ${catKeys.length} categoria(s)!`);
+  renderAll();
+  const msg = isPreformed
+    ? `✅ ${totalDuplas} dupla(s) + ${totalPlayers} jogador(es) avulso(s) distribuídos em ${catKeys.length} categoria(s)!`
+    : `✅ ${totalPlayers} jogador(es) distribuído(s) em ${catKeys.length} categoria(s)!`;
+  showToast(msg);
 }
 // ─────────────────────────────────────────────────────────────────────
 // ── RULES ────────────────────────────────────────────────────────────
@@ -3696,6 +3837,32 @@ applyTheme();
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModals()">Cancelar</button>
       <button class="btn btn-primary" id="btn-confirm-import" style="display:none;" onclick="confirmImport()">✅ Importar</button>
+    </div>
+  </div>
+</div>
+
+<!-- PRE-FORMED DUPLA MODAL -->
+<div class="modal-overlay" id="modal-preformed-dupla">
+  <div class="modal" style="max-width:400px;">
+    <h2 id="pf-modal-title">➕ Cadastrar Dupla</h2>
+    <input type="hidden" id="pf-idx" value="-1">
+    <div class="form-group">
+      <label id="pf-p1-label">👤 Jogador 1</label>
+      <input class="form-input" id="pf-p1" type="text" placeholder="Nome completo"
+             onkeydown="if(event.key==='Enter') document.getElementById('pf-p2').focus()">
+    </div>
+    <div class="form-group" id="pf-p2-wrap">
+      <label>👩 Jogador 2</label>
+      <input class="form-input" id="pf-p2" type="text" placeholder="Nome completo"
+             onkeydown="if(event.key==='Enter') savePreformedDupla()">
+    </div>
+    <div class="form-group">
+      <label>🏅 Categoria</label>
+      <select class="form-input" id="pf-cat"></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModals()">Cancelar</button>
+      <button class="btn btn-primary" onclick="savePreformedDupla()">💾 Salvar Dupla</button>
     </div>
   </div>
 </div>
