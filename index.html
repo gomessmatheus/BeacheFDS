@@ -6,8 +6,9 @@
 <title>🏖️ Torneio Beach do FDS</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <!-- Firebase SDK -->
-<script src="https://unpkg.com/firebase@10.12.2/compat/app/dist/index.js"></script>
-<script src="https://unpkg.com/firebase@10.12.2/compat/database/dist/index.js"></script>
+<!-- Firebase SDK via Google's official CDN -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <style>
 :root {
   --sand:#F2DEB3; --coral:#E85D3A; --coral-l:#FF7A5C;
@@ -318,11 +319,22 @@ body.tiebreak-active .score-live{color:var(--gold);}
 .btn-tiebreak.active{background:rgba(240,180,41,.3);border-color:var(--gold);}
 
 /* ── CATEGORY TABS ─────────────────────────────────────────────────── */
-.cat-tabs-wrap{display:none;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 20px;background:rgba(255,255,255,.02);border-bottom:1px solid var(--border);}
-.cat-tab{background:var(--card);border:1px solid var(--border);color:var(--muted);font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;padding:7px 18px;border-radius:20px;cursor:pointer;transition:all .2s;}
-.cat-tab:hover{border-color:var(--teal);color:var(--teal);}
-.cat-tab.active{background:rgba(43,191,176,.15);border-color:var(--teal);color:var(--teal);}
-.cat-tab.cat-add{background:transparent;border-style:dashed;color:var(--muted);font-size:12px;}
+.cat-tabs-wrap{display:none;gap:6px;align-items:center;flex-wrap:wrap;padding:8px 20px;background:rgba(255,255,255,.02);border-bottom:1px solid var(--border);}
+/* Group dropdown button */
+.cat-group{position:relative;display:inline-block;}
+.cat-group-btn{background:var(--card);border:1px solid var(--border);color:var(--muted);font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;padding:7px 16px;border-radius:20px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:6px;white-space:nowrap;}
+.cat-group-btn:hover,.cat-group:focus-within .cat-group-btn{border-color:var(--teal);color:var(--teal);}
+.cat-group-btn.has-active{background:rgba(43,191,176,.15);border-color:var(--teal);color:var(--teal);}
+.cat-group-btn .caret{font-size:9px;opacity:.6;transition:transform .2s;}
+.cat-group:hover .caret,.cat-group:focus-within .caret{transform:rotate(180deg);}
+/* Dropdown panel */
+.cat-dropdown{display:none;position:absolute;top:calc(100% + 6px);left:0;min-width:160px;background:var(--card2);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:200;overflow:hidden;}
+.cat-group:hover .cat-dropdown,.cat-group:focus-within .cat-dropdown{display:block;}
+.cat-dropdown-item{display:block;width:100%;text-align:left;padding:9px 16px;font-size:13px;font-weight:500;color:var(--muted);background:none;border:none;cursor:pointer;transition:background .15s;white-space:nowrap;}
+.cat-dropdown-item:hover{background:rgba(43,191,176,.08);color:var(--teal);}
+.cat-dropdown-item.active{background:rgba(43,191,176,.15);color:var(--teal);font-weight:700;}
+/* Add button */
+.cat-tab.cat-add{background:transparent;border:1px dashed var(--border);color:var(--muted);font-size:12px;font-family:'Outfit',sans-serif;font-weight:600;padding:7px 14px;border-radius:20px;cursor:pointer;transition:all .2s;}
 .cat-tab.cat-add:hover{color:var(--sand);border-color:var(--sand);}
 
 /* ── MULTI-DAY SCHEDULE ─────────────────────────────────────────────── */
@@ -348,6 +360,14 @@ body.tiebreak-active .score-live{color:var(--gold);}
 .rule-block.accent-sand h3{color:var(--sand);}
 .rules-textarea{width:100%;min-height:100px;background:var(--night3);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-size:13px;line-height:1.7;resize:vertical;font-family:'Outfit',sans-serif;}
 .rules-textarea:focus{outline:none;border-color:var(--teal);}
+
+/* ── DRAW MODAL ─────────────────────────────────────────────────────── */
+.draw-groups-wrap{display:grid;gap:12px;}
+.draw-group-col{background:var(--night3);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+.draw-group-header{padding:10px 16px;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1.5px;display:flex;align-items:center;gap:8px;}
+.draw-dupla-row{display:flex;align-items:center;gap:10px;padding:9px 16px;border-top:1px solid var(--border);font-size:13px;}
+.draw-dupla-num{font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--muted);min-width:20px;}
+.draw-seed-badge{font-size:10px;background:rgba(240,180,41,.15);color:var(--gold);border-radius:4px;padding:1px 6px;margin-left:auto;}
 </style>
 </head>
 <body>
@@ -390,7 +410,7 @@ body.tiebreak-active .score-live{color:var(--gold);}
   <div class="controls">
     <button class="btn btn-primary admin-only" onclick="openDuplaModal()">+ Adicionar Dupla</button>
     <button class="btn btn-secondary admin-only" onclick="sortearDoPool()">🎲 Sortear do Pool</button>
-    <button class="btn btn-secondary admin-only" onclick="sortearNovamente()">🔀 Ressortear Duplas</button>
+    <button class="btn btn-secondary admin-only" onclick="openSortearGruposModal()">🎯 Sortear Grupos</button>
   </div>
   <div class="duplas-grid" id="duplas-grid"></div>
   <div id="reserva-row" style="margin-top:12px;"></div>
@@ -500,10 +520,16 @@ body.tiebreak-active .score-live{color:var(--gold);}
 <div class="modal-overlay" id="modal-dupla">
   <div class="modal">
     <h2 id="modal-dupla-title">➕ Nova Dupla</h2>
-    <p>Preencha os nomes da dupla mista.</p>
+    <p id="modal-dupla-sub" style="color:var(--muted);font-size:13px;margin-bottom:16px;"></p>
     <input type="hidden" id="modal-dupla-idx" value="-1">
-    <div class="form-group"><label>👨 Jogador (Masculino)</label><input type="text" id="md-m" placeholder="Nome do jogador"></div>
-    <div class="form-group"><label>👩 Jogadora (Feminino)</label><input type="text" id="md-f" placeholder="Nome da jogadora"></div>
+    <div class="form-group">
+      <label id="md-m-label">👤 Jogador 1</label>
+      <input class="form-input" type="text" id="md-m" placeholder="Nome" onkeydown="if(event.key==='Enter')document.getElementById('md-f').focus()">
+    </div>
+    <div class="form-group" id="md-f-wrap">
+      <label id="md-f-label">👤 Jogador 2</label>
+      <input class="form-input" type="text" id="md-f" placeholder="Nome" onkeydown="if(event.key==='Enter')saveDupla()">
+    </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModals()">Cancelar</button>
       <button class="btn btn-primary" onclick="saveDupla()">💾 Salvar</button>
@@ -824,15 +850,42 @@ const SPORT_CONFIGS = {
 };
 
 const TEAM_MODE_LABELS = {
-  misto:         { label: 'Duplas Mistas', icon: '👫', hasFemale: true },
-  masculino:     { label: 'Masculino',     icon: '👨', hasFemale: false },
-  feminino:      { label: 'Feminino',      icon: '👩', hasFemale: false },
-  dupla_m:       { label: 'Duplas Masc.',  icon: '👬', hasFemale: false },
-  dupla_f:       { label: 'Duplas Fem.',   icon: '👭', hasFemale: true  },
-  dupla_mista:   { label: 'Duplas Mistas', icon: '👫', hasFemale: true  },
-  individual_m:  { label: 'Individual M',  icon: '🧍', hasFemale: false },
-  individual_f:  { label: 'Individual F',  icon: '🧍', hasFemale: false },
+  // hasFemale: legacy compat
+  // p1label/p2label: field labels in dupla modal
+  // p1icon/p2icon: emoji
+  // hasP2: does this mode have a second player per entry?
+  // poolMode: 'two_gender'|'one_col_m'|'one_col_f' — how pool is displayed
+  misto:        { label:'Duplas Mistas', icon:'👫', hasFemale:true,
+                  p1label:'Jogador', p1icon:'👨', p2label:'Jogadora', p2icon:'👩',
+                  hasP2:true, poolMode:'two_gender' },
+  masculino:    { label:'Masculino',     icon:'👨', hasFemale:false,
+                  p1label:'Jogador 1',  p1icon:'👤', p2label:'Jogador 2', p2icon:'👤',
+                  hasP2:true, poolMode:'one_col_m' },
+  feminino:     { label:'Feminino',      icon:'👩', hasFemale:false,
+                  p1label:'Jogadora 1', p1icon:'👤', p2label:'Jogadora 2', p2icon:'👤',
+                  hasP2:true, poolMode:'one_col_f' },
+  dupla_m:      { label:'Duplas Masc.', icon:'👬', hasFemale:false,
+                  p1label:'Jogador 1',  p1icon:'👤', p2label:'Jogador 2', p2icon:'👤',
+                  hasP2:true, poolMode:'one_col_m' },
+  dupla_f:      { label:'Duplas Fem.',  icon:'👭', hasFemale:false,
+                  p1label:'Jogadora 1', p1icon:'👤', p2label:'Jogadora 2', p2icon:'👤',
+                  hasP2:true, poolMode:'one_col_f' },
+  dupla_mista:  { label:'Duplas Mistas',icon:'👫', hasFemale:true,
+                  p1label:'Jogador', p1icon:'👨', p2label:'Jogadora', p2icon:'👩',
+                  hasP2:true, poolMode:'two_gender' },
+  individual_m: { label:'Individual M', icon:'🧍', hasFemale:false,
+                  p1label:'Jogador',    p1icon:'👤', p2label:'', p2icon:'',
+                  hasP2:false, poolMode:'one_col_m' },
+  individual_f: { label:'Individual F', icon:'🧍', hasFemale:false,
+                  p1label:'Jogadora',   p1icon:'👤', p2label:'', p2icon:'',
+                  hasP2:false, poolMode:'one_col_f' },
 };
+
+function getCatModeInfo(){
+  const cat = getActiveCat();
+  const tm  = (cat && cat.teamMode) || getTeamMode();
+  return TEAM_MODE_LABELS[tm] || TEAM_MODE_LABELS.misto;
+}
 
 function getSport(){
   const id = (state && state.config && state.config.sport) || 'beach_tennis';
@@ -927,19 +980,75 @@ function renderCategoryTabs(){
   if(!state || !state.categories) return;
   const cats = state.categories || [];
   const activeId = state.activeCatId;
-  if(cats.length <= 1){
+
+  if(cats.length === 0){
     wrap.innerHTML = '';
     wrap.style.display = 'none';
     return;
   }
+
   wrap.style.display = 'flex';
-  wrap.innerHTML = cats.map(c => `
-    <button class="cat-tab ${c.id === activeId ? 'active' : ''}" onclick="setActiveCategory('${c.id}')">
-      ${c.name}${c.classe ? ` <span style="font-size:10px;opacity:.7;">${c.classe}</span>` : ''}
-    </button>
-  `).join('') + (currentRole === 'admin' ? `
-    <button class="cat-tab cat-add" onclick="openNewCategoryModal()">+ Nova</button>
-  ` : '');
+
+  // Group categories by teamMode (modalidade)
+  const groups = {};
+  const groupOrder = [];
+  cats.forEach(c => {
+    const key = c.teamMode || 'misto';
+    if(!groups[key]){ groups[key] = []; groupOrder.push(key); }
+    groups[key].push(c);
+  });
+
+  const modeLabel = {
+    misto:'Misto', masculino:'Masculino', feminino:'Feminino',
+    dupla_m:'Duplas Masc.', dupla_f:'Duplas Fem.',
+    individual_m:'Individual M', individual_f:'Individual F'
+  };
+
+  let html = '';
+
+  if(cats.length === 1){
+    // Single category: just show as active pill, no dropdown
+    const c = cats[0];
+    html = `<button class="cat-group-btn has-active" style="pointer-events:none;border-radius:20px;">${c.name}</button>`;
+  } else {
+    groupOrder.forEach(key => {
+      const groupCats = groups[key];
+      const label = modeLabel[key] || key;
+      const hasActive = groupCats.some(c => c.id === activeId);
+      const activeCat = groupCats.find(c => c.id === activeId);
+
+      if(groupCats.length === 1){
+        // Single item in group: no dropdown, just a pill
+        const c = groupCats[0];
+        html += `<div class="cat-group">
+          <button class="cat-group-btn ${c.id===activeId?'has-active':''}" onclick="setActiveCategory('${c.id}')">
+            ${c.name}
+          </button>
+        </div>`;
+      } else {
+        // Multiple classes in group: dropdown
+        const btnLabel = hasActive ? (activeCat ? activeCat.classe || activeCat.name : label) : label;
+        html += `<div class="cat-group" tabindex="0">
+          <button class="cat-group-btn ${hasActive?'has-active':''}" onclick="this.closest('.cat-group').focus()">
+            ${label} ${hasActive && activeCat && activeCat.classe ? '· <strong>'+activeCat.classe+'</strong>' : ''}
+            <span class="caret">▼</span>
+          </button>
+          <div class="cat-dropdown">
+            ${groupCats.map(c => `
+              <button class="cat-dropdown-item ${c.id===activeId?'active':''}" onclick="setActiveCategory('${c.id}');this.closest('.cat-group').blur()">
+                ${c.classe || c.name}
+              </button>`).join('')}
+          </div>
+        </div>`;
+      }
+    });
+  }
+
+  if(currentRole === 'admin'){
+    html += `<button class="cat-tab cat-add" onclick="openNewCategoryModal()">+ Nova</button>`;
+  }
+
+  wrap.innerHTML = html;
 }
 
 const TEAMMODE_SHORT = {
@@ -1527,13 +1636,15 @@ function saveCat(key){
     attempts++;
     if(typeof firebase !== 'undefined'){
       initFirebase(cfg, null);
-    } else if(attempts < 40){
-      setTimeout(tryConnect, 500); // retry every 500ms up to 20 seconds
+    } else if(attempts < 60){
+      setTimeout(tryConnect, 500); // retry every 500ms up to 30 seconds
     } else {
-      console.warn('Firebase SDK never loaded after 20s - check network');
+      console.warn('Firebase SDK never loaded after 30s - check network');
+      setFirebaseStatus(false);
+      showToast('⚠️ SDK do Firebase não carregou. Verifique sua conexão e recarregue a página.');
     }
   }
-  setTimeout(tryConnect, 500);
+  setTimeout(tryConnect, 300);
 })();
 
 // =============================================
@@ -1541,6 +1652,7 @@ function saveCat(key){
 // =============================================
 function renderDuplas(){
   const cat = getActiveCat(); const {duplas, groups, reserva} = cat;
+  const mi  = getCatModeInfo();
   const grid = document.getElementById('duplas-grid');
   grid.innerHTML = '';
   
@@ -1583,27 +1695,50 @@ function renderDuplas(){
 }
 
 function openDuplaModal(idx){
-  document.getElementById('modal-dupla-idx').value = idx === undefined ? -1 : idx;
-  document.getElementById('modal-dupla-title').textContent = idx === undefined ? '➕ Nova Dupla' : '✏️ Editar Dupla '+(idx+1);
-  document.getElementById('md-m').value = idx !== undefined ? getActiveCat().duplas[idx].m : '';
-  document.getElementById('md-f').value = idx !== undefined ? getActiveCat().duplas[idx].f : '';
+  const mi = getCatModeInfo();
+  const isEdit = idx !== undefined && idx >= 0;
+  const d = isEdit ? getActiveCat().duplas[idx] : null;
+
+  document.getElementById('modal-dupla-idx').value = isEdit ? idx : -1;
+  document.getElementById('modal-dupla-title').textContent = isEdit ? '✏️ Editar Dupla '+(idx+1) : '➕ Nova Dupla';
+  document.getElementById('modal-dupla-sub').textContent = mi.label + (mi.hasP2 ? ' — preencha os dois jogadores' : '');
+
+  // P1 label
+  document.getElementById('md-m-label').textContent = mi.p1icon + ' ' + mi.p1label;
+  document.getElementById('md-m').placeholder = 'Nome d' + (mi.p1label.toLowerCase().includes('jogadora') ? 'a ' : 'o ') + mi.p1label.toLowerCase();
+  document.getElementById('md-m').value = d ? d.m : '';
+
+  // P2 label + visibility
+  const p2wrap = document.getElementById('md-f-wrap');
+  if(mi.hasP2){
+    p2wrap.style.display = '';
+    document.getElementById('md-f-label').textContent = mi.p2icon + ' ' + mi.p2label;
+    document.getElementById('md-f').placeholder = 'Nome d' + (mi.p2label.toLowerCase().includes('jogadora') ? 'a ' : 'o ') + mi.p2label.toLowerCase();
+    document.getElementById('md-f').value = d ? (d.f||'') : '';
+  } else {
+    p2wrap.style.display = 'none';
+    document.getElementById('md-f').value = '';
+  }
+
   document.getElementById('modal-dupla').classList.add('open');
   setTimeout(() => document.getElementById('md-m').focus(), 100);
 }
 
 function saveDupla(){
+  const mi  = getCatModeInfo();
   const idx = parseInt(document.getElementById('modal-dupla-idx').value);
-  const m = document.getElementById('md-m').value.trim();
-  const f = document.getElementById('md-f').value.trim();
-  if(!m || !f){ showToast('⚠️ Preencha os dois nomes!'); return; }
-  
+  const m   = document.getElementById('md-m').value.trim();
+  const f   = mi.hasP2 ? document.getElementById('md-f').value.trim() : '';
+  if(!m){ showToast('⚠️ Preencha o nome d' + (mi.p1label.toLowerCase().includes('jogadora')?'a ':'o ') + mi.p1label.toLowerCase() + '!'); return; }
+  if(mi.hasP2 && !f){ showToast('⚠️ Preencha o nome d' + (mi.p2label.toLowerCase().includes('jogadora')?'a ':'o ') + mi.p2label.toLowerCase() + '!'); return; }
+
   if(idx === -1){
     getActiveCat().duplas.push({m, f});
     regenGroupsAndMatches();
     showToast('✅ Dupla adicionada!');
   } else {
     getActiveCat().duplas[idx] = {m, f};
-    showToast('✅ Dupla '+String(idx+1)+' atualizada!');
+    showToast('✅ Dupla '+(idx+1)+' atualizada!');
   }
   saveState();
   closeModals();
@@ -2427,46 +2562,76 @@ document.querySelectorAll('.modal-overlay').forEach(o => {
 // =============================================
 function playerDot(p){ return p.adv ? '<span style="font-size:8px;opacity:.35;color:var(--muted);margin-right:4px;vertical-align:middle;">◆</span>' : '<span style="font-size:8px;opacity:0;margin-right:4px;">◆</span>'; }
 
+function renderPoolItem(p, gender, i){
+  return `<div class="pool-item">
+    <span class="pool-item-name" onclick="toggleAdv('${gender}',${i})" style="cursor:pointer;user-select:none;">${playerDot(p)} ${p.name}</span>
+    ${p.cat ? `<span style="font-size:10px;background:rgba(43,191,176,.12);color:var(--teal);border-radius:5px;padding:2px 7px;white-space:nowrap;">${p.cat}</span>` : ''}
+    <button class="pool-item-del admin-only" onclick="removeFromPool('${gender}',${i})" title="Remover">🗑️</button>
+  </div>`;
+}
+
 function renderPool(){
-  const pool = getActiveCat().pool || {homens:[],mulheres:[]};
-  const hl = document.getElementById('pool-h-list');
-  const ml = document.getElementById('pool-m-list');
-  if(!hl||!ml) return;
+  const cat  = getActiveCat();
+  const pool = cat.pool || {homens:[],mulheres:[]};
+  const mi   = getCatModeInfo();
+  const mode = mi.poolMode || 'two_gender';
+  const bm   = document.getElementById('pool-balance-msg');
 
-  document.getElementById('pool-h-count').textContent = pool.homens.length;
-  document.getElementById('pool-m-count').textContent = pool.mulheres.length;
+  // ── Adapt pool grid layout ───────────────────────────────────────
+  const poolGrid   = document.getElementById('pool-grid');
+  const hColWrap   = document.getElementById('pool-homens-col');
+  const mColWrap   = document.getElementById('pool-mulheres-col');
+  const hCountEl   = document.getElementById('pool-h-count');
+  const mCountEl   = document.getElementById('pool-m-count');
+  const hTitleEl   = document.getElementById('pool-h-title');
+  const mTitleEl   = document.getElementById('pool-f-title');
+  const hList      = document.getElementById('pool-h-list');
+  const mList      = document.getElementById('pool-m-list');
+  if(!hList) return;
 
-  hl.innerHTML = pool.homens.length === 0
-    ? '<div style="padding:16px;color:var(--muted);font-size:13px;text-align:center;">Nenhum jogador adicionado</div>'
-    : pool.homens.map((p,i) => `
-        <div class="pool-item">
-          <span class="pool-item-name" onclick="toggleAdv('h',${i})" style="cursor:pointer;user-select:none;">${playerDot(p)}👨 ${p.name}</span>
-          ${p.cat ? `<span style="font-size:10px;background:rgba(43,191,176,.12);color:var(--teal);border-radius:5px;padding:2px 7px;white-space:nowrap;">${p.cat}</span>` : ''}
-          <button class="pool-item-del admin-only" onclick="removeFromPool('h',${i})" title="Remover">🗑️</button>
-        </div>`).join('');
+  if(mode === 'two_gender'){
+    // Misto: two columns — men | women
+    poolGrid.style.gridTemplateColumns = '1fr 1fr';
+    mColWrap.style.display = '';
+    hTitleEl.textContent = '👨 Jogadores';
+    mTitleEl.textContent = '👩 Jogadoras';
+    hCountEl.textContent = pool.homens.length;
+    mCountEl.textContent = pool.mulheres.length;
 
-  ml.innerHTML = pool.mulheres.length === 0
-    ? '<div style="padding:16px;color:var(--muted);font-size:13px;text-align:center;">Nenhuma jogadora adicionada</div>'
-    : pool.mulheres.map((p,i) => `
-        <div class="pool-item">
-          <span class="pool-item-name" onclick="toggleAdv('m',${i})" style="cursor:pointer;user-select:none;">${playerDot(p)}👩 ${p.name}</span>
-          ${p.cat ? `<span style="font-size:10px;background:rgba(43,191,176,.12);color:var(--teal);border-radius:5px;padding:2px 7px;white-space:nowrap;">${p.cat}</span>` : ''}
-          <button class="pool-item-del admin-only" onclick="removeFromPool('m',${i})" title="Remover">🗑️</button>
-        </div>`).join('');
+    hList.innerHTML = pool.homens.length === 0
+      ? '<div style="padding:16px;color:var(--muted);font-size:13px;text-align:center;">Nenhum jogador adicionado</div>'
+      : pool.homens.map((p,i) => renderPoolItem(p,'h',i)).join('');
 
-  // Balance message
-  const bm = document.getElementById('pool-balance-msg');
-  const dh = pool.homens.length, dm = pool.mulheres.length;
-  const min = Math.min(dh, dm);
-  if(min === 0){
-    bm.innerHTML = '';
-  } else if(dh === dm){
-    bm.innerHTML = `<div style="background:rgba(56,217,169,.08);border:1px solid rgba(56,217,169,.2);border-radius:12px;padding:12px 16px;font-size:13px;color:var(--success);">✅ ${min} duplas mistas possíveis · sorteio equilibrado!</div>`;
+    mList.innerHTML = pool.mulheres.length === 0
+      ? '<div style="padding:16px;color:var(--muted);font-size:13px;text-align:center;">Nenhuma jogadora adicionada</div>'
+      : pool.mulheres.map((p,i) => renderPoolItem(p,'m',i)).join('');
+
+    // Balance message
+    const dh = pool.homens.length, dm = pool.mulheres.length;
+    const min = Math.min(dh, dm);
+    if(min === 0){ bm.innerHTML = ''; }
+    else if(dh === dm){
+      bm.innerHTML = `<div style="background:rgba(56,217,169,.08);border:1px solid rgba(56,217,169,.2);border-radius:12px;padding:12px 16px;font-size:13px;color:var(--success);">✅ ${min} duplas possíveis · sorteio equilibrado!</div>`;
+    } else {
+      const extra = dh > dm ? `<strong>${dh-dm}</strong> jogador(es) a mais` : `<strong>${dm-dh}</strong> jogadora(s) a mais`;
+      bm.innerHTML = `<div style="background:rgba(240,180,41,.08);border:1px solid rgba(240,180,41,.2);border-radius:12px;padding:12px 16px;font-size:13px;color:var(--gold);">⚠️ ${extra} — ficarão de reserva. Serão formadas <strong>${min} duplas</strong>.</div>`;
+    }
+
   } else {
-    const extra = dh > dm
-      ? `<strong>${dh-dm} homem(ns)</strong> a mais — ficarão de reserva`
-      : `<strong>${dm-dh} mulher(es)</strong> a mais — ficarão de reserva`;
-    bm.innerHTML = `<div style="background:rgba(240,180,41,.08);border:1px solid rgba(240,180,41,.2);border-radius:12px;padding:12px 16px;font-size:13px;color:var(--gold);">⚠️ ${extra}. Serão formadas <strong>${min} duplas</strong>.</div>`;
+    // Single gender mode: one full-width column, use homens list for everyone
+    poolGrid.style.gridTemplateColumns = '1fr';
+    mColWrap.style.display = 'none';
+    const isFemale = mode === 'one_col_f';
+    hTitleEl.textContent = isFemale ? '👩 Jogadoras' : '👨 Jogadores';
+    hCountEl.textContent = pool.homens.length;
+
+    hList.innerHTML = pool.homens.length === 0
+      ? `<div style="padding:16px;color:var(--muted);font-size:13px;text-align:center;">Nenhum${isFemale?'a':''} jogador${isFemale?'a':''} adicionado${isFemale?'a':''}</div>`
+      : pool.homens.map((p,i) => renderPoolItem(p,'h',i)).join('');
+
+    bm.innerHTML = pool.homens.length > 0
+      ? `<div style="background:rgba(43,191,176,.06);border:1px solid rgba(43,191,176,.15);border-radius:12px;padding:12px 16px;font-size:13px;color:var(--muted);">👥 ${pool.homens.length} jogador${isFemale?'a':''}${pool.homens.length>1?(isFemale?'s':'s'):''} no pool · ${Math.floor(pool.homens.length/2)} dupla${Math.floor(pool.homens.length/2)!==1?'s':''} possíveis</div>`
+      : '';
   }
 }
 
@@ -2478,9 +2643,12 @@ function toggleAdv(gender, idx){
 }
 
 function openPoolModal(gender){
+  const mi = getCatModeInfo();
+  const isFemCol = gender === 'm' || mi.poolMode === 'one_col_f';
+  const label = isFemCol ? 'Jogadora' : 'Jogador';
   document.getElementById('modal-pool-gender').value = gender;
-  document.getElementById('modal-pool-title').textContent = gender==='h' ? '👨 Adicionar Homem' : '👩 Adicionar Mulher';
-  document.getElementById('modal-pool-sub').textContent = gender==='h' ? 'Adicione um jogador masculino ao pool.' : 'Adicione uma jogadora ao pool.';
+  document.getElementById('modal-pool-title').textContent = (isFemCol ? '👩' : '👨') + ' Adicionar ' + label;
+  document.getElementById('modal-pool-sub').textContent = 'Adicione um' + (isFemCol?'a ':' ') + label.toLowerCase() + ' ao pool.';
   document.getElementById('pool-name-input').value = '';
   document.getElementById('modal-pool').classList.add('open');
   setTimeout(() => document.getElementById('pool-name-input').focus(), 100);
@@ -2788,7 +2956,7 @@ function openConfigModal(){
       : cats.map(c => `
         <div style="display:flex;align-items:center;gap:8px;background:var(--night3);border:1px solid var(--border);border-radius:10px;padding:8px 12px;">
           <span style="flex:1;font-size:13px;font-weight:600;">${c.name}</span>
-          <span style="font-size:11px;color:var(--muted);">${(TEAM_MODE_LABELS[c.teamMode]||{}).label||c.teamMode}${c.classe?' · '+c.classe:''}</span>
+          <span style="font-size:11px;color:var(--muted);">${(TEAM_MODE_LABELS[c.teamMode]||{}).label||c.teamMode}</span>
           ${cats.length > 1 ? `<button class="icon-btn del" onclick="deleteCategory('${c.id}')" title="Excluir">🗑️</button>` : ''}
         </div>`).join('');
   }
@@ -2897,19 +3065,7 @@ function applyTheme(){
     const rest  = parts.slice(1).join(' ');
     h1.innerHTML = first + (rest ? '<span>' + rest + '</span>' : '');
   }
-  // Show/hide pool female column based on teamMode
-  const isMixed = isMixedMode();
-  const femCol = document.getElementById('pool-mulheres-col');
-  if(femCol) femCol.style.display = isMixed ? '' : 'none';
-  const homCol = document.getElementById('pool-homens-col');
-  if(homCol){
-    homCol.style.gridColumn = isMixed ? '' : '1/-1';
-    const title = homCol.querySelector('.pool-col-title');
-    if(title){
-      const pl = sport.playerLabel;
-      title.textContent = isMixed ? ('👨 ' + pl.m + 's') : ('👤 Jogadores');
-    }
-  }
+  // Pool layout is handled by renderPool() which reads getCatModeInfo()
   // Update score inputs max based on sport scoring
   document.querySelectorAll('.score-input').forEach(el => {
     el.max = sport.maxScore;
@@ -3139,6 +3295,127 @@ function doPublicar(){
 
 
 
+
+// ── SORTEAR GRUPOS ───────────────────────────────────────────────────
+let _drawResult = null; // holds preview before confirming
+
+function openSortearGruposModal(){
+  const cat = getActiveCat();
+  if(cat.duplas.length < 2){
+    showToast('⚠️ Cadastre pelo menos 2 duplas antes de sortear grupos.');
+    return;
+  }
+  _drawResult = null;
+  renderDrawPreview();
+  document.getElementById('modal-sortear-grupos').classList.add('open');
+  // Auto-run first draw so user sees result immediately
+  setTimeout(runDraw, 80);
+}
+
+function calcFormat(n){
+  // Already defined elsewhere, but replicated here for clarity
+  // Determine number of groups based on dupla count
+  // 2-3 → 1 group | 4-7 → 2 | 8-11 → 3 | 12+ → 4
+  let numGroups = 1;
+  if(n >= 4)  numGroups = 2;
+  if(n >= 8)  numGroups = 3;
+  if(n >= 12) numGroups = 4;
+  return { numGroups };
+}
+
+function runDraw(){
+  const cat = getActiveCat();
+  const duplas = [...cat.duplas.map((d,i) => ({...d, origIdx:i}))];
+  const numGroups = calcFormat(duplas.length).numGroups;
+
+  // Separate seeded (adv) duplas — mark them if pool flagged adv
+  // For preformed mode we use order of registration as seeding proxy
+  // Seeds: first N duplas (one per group) are distributed as seeds
+  const seeds  = duplas.slice(0, numGroups);
+  const rest   = duplas.slice(numGroups);
+  shuffle(rest);
+
+  // Build groups: place one seed per group, then fill with rest
+  const groups = Array.from({length: numGroups}, (_, gi) => [seeds[gi]]);
+  rest.forEach((d, i) => groups[i % numGroups].push(d));
+
+  _drawResult = { groups, numGroups };
+  renderDrawPreview();
+}
+
+function renderDrawPreview(){
+  const cat = getActiveCat();
+  const wrap = document.getElementById('draw-preview-wrap');
+  const confirmBtn = document.getElementById('btn-confirm-draw');
+  if(!wrap) return;
+
+  if(!_drawResult){
+    // Show current state as starting point
+    const numGroups = calcFormat(cat.duplas.length).numGroups;
+    wrap.innerHTML = `
+      <div style="text-align:center;padding:24px;color:var(--muted);">
+        <div style="font-size:36px;margin-bottom:12px;">🎯</div>
+        <p style="font-size:14px;">${cat.duplas.length} duplas · ${numGroups} grupo${numGroups>1?'s':''}</p>
+        <p style="font-size:12px;margin-top:6px;">Clique em <strong>Sortear</strong> para ver a distribuição.</p>
+      </div>`;
+    if(confirmBtn) confirmBtn.style.display = 'none';
+    return;
+  }
+
+  const { groups } = _drawResult;
+  const cols = groups.length >= 3 ? 'repeat(2,1fr)' : `repeat(${groups.length},1fr)`;
+  const groupColors = ['var(--teal)','var(--coral-l)','var(--gold)','var(--sand)'];
+  const groupBgs    = ['rgba(43,191,176,.1)','rgba(255,107,107,.1)','rgba(240,180,41,.1)','rgba(200,160,100,.1)'];
+
+  wrap.innerHTML = `<div class="draw-groups-wrap" style="grid-template-columns:${cols};">` +
+    groups.map((grp, gi) => `
+      <div class="draw-group-col">
+        <div class="draw-group-header" style="background:${groupBgs[gi]};color:${groupColors[gi]};">
+          Grupo ${'ABCD'[gi]}
+          <span style="font-size:11px;color:var(--muted);font-family:'Outfit',sans-serif;font-weight:400;margin-left:4px;">${grp.length} duplas</span>
+        </div>
+        ${grp.map((d, rank) => `
+          <div class="draw-dupla-row">
+            <span class="draw-dupla-num">${rank+1}</span>
+            <div style="flex:1">
+              <div style="font-weight:600;font-size:13px;">${d.m}${d.f ? ' <span style="color:var(--muted);font-weight:400;">/ '+d.f+'</span>' : ''}</div>
+            </div>
+            ${rank === 0 ? '<span class="draw-seed-badge">CABEÇA</span>' : ''}
+          </div>`).join('')}
+      </div>`).join('') + '</div>';
+
+  if(confirmBtn) confirmBtn.style.display = '';
+}
+
+function confirmDraw(){
+  if(!_drawResult) return;
+  const cat = getActiveCat();
+  const { groups } = _drawResult;
+
+  // Reorder duplas array so groups are sequential, preserve scores
+  const oldMap = {};
+  (cat.matches||[]).forEach(m => oldMap[m.id] = m);
+
+  const newDuplas = groups.flat().map(d => ({m:d.m, f:d.f||''}));
+  const newGroups = {
+    numGroups: groups.length,
+    groups: groups.map((grp, gi) =>
+      grp.map((_, di) => groups.slice(0,gi).flat().length + di)
+    ),
+    bye: -1
+  };
+
+  cat.duplas  = newDuplas;
+  cat.groups  = newGroups;
+  cat.matches = buildMatches(newGroups).map(m => oldMap[m.id] ? {...m, s1:oldMap[m.id].s1, s2:oldMap[m.id].s2, done:oldMap[m.id].done} : m);
+  cat.knockoutMatches = buildKnockoutMatches(newGroups.groups.length);
+
+  saveState('categories');
+  closeModals();
+  renderAll();
+  showToast('🎯 Grupos sorteados! ' + groups.map((g,i)=>'Grupo '+'ABCD'[i]+': '+g.length+' duplas').join(' · '));
+}
+// ─────────────────────────────────────────────────────────────────────
 // ── PRE-FORMED DUPLAS ────────────────────────────────────────────────
 function openAddPreformedDupla(editIdx){
   const modal = document.getElementById('modal-preformed-dupla');
@@ -3150,9 +3427,10 @@ function openAddPreformedDupla(editIdx){
   const catSel = document.getElementById('pf-cat');
   if(catSel) catSel.innerHTML = cats.map(c => `<option value="${c.id}" ${c.id===getActiveCat().id?'selected':''}>${c.name}</option>`).join('');
   // Labels
-  document.getElementById('pf-p1-label').textContent = isMixed ? '👨 Jogador (Masculino)' : '👤 Jogador 1';
+  const mi2 = getCatModeInfo();
+  document.getElementById('pf-p1-label').textContent = mi2.p1icon + ' ' + mi2.p1label;
   const p2wrap = document.getElementById('pf-p2-wrap');
-  if(p2wrap) p2wrap.style.display = isMixed ? '' : 'none';
+  if(p2wrap) p2wrap.style.display = mi2.hasP2 ? '' : 'none';
   // Fill values if editing
   if(editIdx >= 0){
     const d = getActiveCat().duplas[editIdx];
@@ -3192,10 +3470,15 @@ function savePreformedDupla(){
   targetCat.knockoutMatches = buildKnockoutMatches(targetCat.groups.groups.length);
   // Mirror to pool (so pool shows the players)
   if(!targetCat.pool) targetCat.pool = {homens:[], mulheres:[]};
-  if(!targetCat.pool.homens.find(x=>x.name===p1))
-    targetCat.pool.homens.push({name:p1, adv:false, cat:targetCat.name});
-  if(isMixed && p2 && !targetCat.pool.mulheres.find(x=>x.name===p2))
-    targetCat.pool.mulheres.push({name:p2, adv:false, cat:targetCat.name});
+  // Pool: for two_gender (misto) split p1→homens, p2→mulheres
+  // For single-gender, both go to homens list
+  if(tmi.poolMode === 'two_gender'){
+    if(!targetCat.pool.homens.find(x=>x.name===p1)) targetCat.pool.homens.push({name:p1,adv:false,cat:targetCat.name});
+    if(p2 && !targetCat.pool.mulheres.find(x=>x.name===p2)) targetCat.pool.mulheres.push({name:p2,adv:false,cat:targetCat.name});
+  } else {
+    if(!targetCat.pool.homens.find(x=>x.name===p1)) targetCat.pool.homens.push({name:p1,adv:false,cat:targetCat.name});
+    if(p2 && !targetCat.pool.homens.find(x=>x.name===p2)) targetCat.pool.homens.push({name:p2,adv:false,cat:targetCat.name});
+  }
   saveState('categories');
   closeModals();
   renderAll();
@@ -3903,6 +4186,20 @@ applyTheme();
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModals()">Cancelar</button>
       <button class="btn btn-primary" onclick="savePreformedDupla()">💾 Salvar Dupla</button>
+    </div>
+  </div>
+</div>
+
+<!-- SORTEAR GRUPOS MODAL -->
+<div class="modal-overlay" id="modal-sortear-grupos">
+  <div class="modal" style="max-width:560px;max-height:92vh;overflow-y:auto;">
+    <h2>🎯 Sortear Grupos</h2>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">A primeira dupla de cada grupo é o cabeça de chave. Sorteie quantas vezes quiser antes de confirmar.</p>
+    <div id="draw-preview-wrap"></div>
+    <div class="modal-actions" style="margin-top:20px;">
+      <button class="btn btn-secondary" onclick="closeModals()">Cancelar</button>
+      <button class="btn btn-secondary" onclick="runDraw()">🔀 Sortear novamente</button>
+      <button class="btn btn-primary" id="btn-confirm-draw" style="display:none" onclick="confirmDraw()">✅ Confirmar Grupos</button>
     </div>
   </div>
 </div>
