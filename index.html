@@ -295,6 +295,9 @@ footer{position:relative;z-index:1;text-align:center;padding:24px 20px;border-to
 body.role-admin .admin-only { display:inline-flex !important; }
 body.role-admin .score-only { display:inline-flex !important; }
 body.role-juiz  .score-only { display:inline-flex !important; }
+/* Pool nav tab is also admin-only */
+.nav-btn.admin-only { display:none !important; }
+body.role-admin .nav-btn.admin-only { display:inline-flex !important; }
 .btn-score-wrap { display:none; }
 body.role-admin .btn-score-wrap, body.role-juiz .btn-score-wrap { display:flex !important; }
 body:not(.role-admin):not(.role-juiz) .score-input { pointer-events:none; opacity:.5; background:transparent; }
@@ -321,6 +324,30 @@ body.tiebreak-active .score-live{color:var(--gold);}
 .cat-tab.active{background:rgba(43,191,176,.15);border-color:var(--teal);color:var(--teal);}
 .cat-tab.cat-add{background:transparent;border-style:dashed;color:var(--muted);font-size:12px;}
 .cat-tab.cat-add:hover{color:var(--sand);border-color:var(--sand);}
+
+/* ── MULTI-DAY SCHEDULE ─────────────────────────────────────────────── */
+.day-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+.day-tab{background:var(--card);border:1px solid var(--border);color:var(--muted);font-size:12px;font-weight:700;letter-spacing:1px;padding:6px 16px;border-radius:20px;cursor:pointer;transition:all .2s;text-transform:uppercase;}
+.day-tab.active{background:rgba(43,191,176,.15);border-color:var(--teal);color:var(--teal);}
+.day-block-header{display:flex;align-items:center;gap:12px;padding:10px 0 6px;border-bottom:2px solid var(--border);margin-bottom:10px;}
+.day-block-title{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--gold);letter-spacing:2px;}
+.day-block-sub{font-size:12px;color:var(--muted);}
+/* days editor in config */
+.day-row{display:grid;grid-template-columns:auto 1fr 1fr 1fr auto;gap:8px;align-items:center;background:var(--night3);border:1px solid var(--border);border-radius:10px;padding:8px 12px;margin-bottom:6px;}
+.day-row input{background:var(--card);border:1px solid var(--border);border-radius:7px;padding:5px 8px;color:var(--text);font-size:13px;width:100%;}
+.day-row .day-label{font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--gold);min-width:36px;}
+
+/* ── RULES EDITOR ───────────────────────────────────────────────────── */
+.rules-editor-wrap{display:grid;gap:12px;}
+.rule-block{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px;}
+.rule-block h3{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;margin-bottom:10px;}
+.rule-block p{font-size:13px;line-height:1.9;white-space:pre-wrap;}
+.rule-block.accent-coral h3{color:var(--coral-l);}
+.rule-block.accent-teal h3{color:var(--teal);}
+.rule-block.accent-gold h3{color:var(--gold); border-color:rgba(240,180,41,.3);}
+.rule-block.accent-sand h3{color:var(--sand);}
+.rules-textarea{width:100%;min-height:100px;background:var(--night3);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-size:13px;line-height:1.7;resize:vertical;font-family:'Outfit',sans-serif;}
+.rules-textarea:focus{outline:none;border-color:var(--teal);}
 </style>
 </head>
 <body>
@@ -343,7 +370,7 @@ body.tiebreak-active .score-live{color:var(--gold);}
 <nav class="nav-wrap">
   <div class="nav">
     <button class="nav-btn active" onclick="showSection('duplas',this)">🎾 Duplas</button>
-    <button class="nav-btn" onclick="showSection('pool',this)">👥 Pool</button>
+    <button class="nav-btn admin-only" onclick="showSection('pool',this)">👥 Pool</button>
     <button class="nav-btn" onclick="showSection('partidas',this)">🎮 Partidas</button>
     <button class="nav-btn" onclick="showSection('grupos',this)">📊 Grupos</button>
     <button class="nav-btn" onclick="showSection('chaveamento',this)">🏆 Chaveamento</button>
@@ -372,7 +399,10 @@ body.tiebreak-active .score-live{color:var(--gold);}
 <!-- ===== POOL ===== -->
 <section id="pool" class="section">
   <h2 class="section-title">Pool de Participantes</h2>
-  <p class="section-sub" id="pool-section-sub">Gerencie a lista de jogadores disponíveis. O sorteio de duplas é feito a partir daqui.</p>
+  <p class="section-sub" id="pool-section-sub">Gerencie a lista de jogadores disponíveis.</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+    <button class="btn btn-secondary btn-sm admin-only" onclick="openImportModal()">📥 Importar Jogadores</button>
+  </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;" id="pool-grid">
     <div class="pool-col" id="pool-homens-col">
       <div class="pool-col-header">
@@ -445,33 +475,24 @@ body.tiebreak-active .score-live{color:var(--gold);}
 
 <!-- ===== CRONOGRAMA ===== -->
 <section id="cronograma" class="section">
-  <h2 class="section-title">Cronograma do Dia</h2>
-  <p class="section-sub">Calculado automaticamente com base nas configurações. <button class="btn btn-secondary btn-sm admin-only" onclick="openConfigModal()" style="vertical-align:middle">⚙️ Editar</button></p>
+  <h2 class="section-title">Cronograma</h2>
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+    <p class="section-sub" style="margin:0;">Calculado automaticamente.</p>
+    <button class="btn btn-secondary btn-sm admin-only" onclick="openConfigModal()">⚙️ Configurar</button>
+    <button class="btn btn-secondary btn-sm admin-only" onclick="openScheduleOverrideModal()">✏️ Ajustar manualmente</button>
+  </div>
+  <div class="day-tabs" id="day-tabs-bar"></div>
   <div class="sched-wrap" id="sched-wrap-dynamic"></div>
 </section>
 
 <!-- ===== REGRAS ===== -->
 <section id="regras" class="section">
   <h2 class="section-title">Regras do Torneio</h2>
-  <p class="section-sub">Formato adaptado para o tempo disponível. Fair play acima de tudo!</p>
-  <div style="display:grid;gap:14px;">
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 22px;">
-      <h3 style="font-family:'Bebas Neue';font-size:20px;color:var(--coral-l);letter-spacing:1px;margin-bottom:12px;">🎯 Fase de Grupos</h3>
-      <p style="font-size:13px;line-height:1.9;">• Sets curtos até <strong>4 games</strong>, sem tiebreak<br>• <strong>Vitória</strong> = 3 pts | <strong>Derrota</strong> = 0 pts | <strong>WO</strong> = -1 pt<br>• Desempate: saldo de games → confronto direto<br>• <strong>2 primeiros</strong> de cada grupo avançam<br>• Limite de <strong>10 min por partida</strong></p>
-    </div>
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 22px;">
-      <h3 style="font-family:'Bebas Neue';font-size:20px;color:var(--teal);letter-spacing:1px;margin-bottom:12px;">⚔️ Quartas e Semifinais</h3>
-      <p style="font-size:13px;line-height:1.9;">• 1 set até <strong>6 games</strong><br>• Tiebreak em 6x6 até <strong>7 pontos</strong><br>• Limite: 20 min (quartas) / 30 min (semis)</p>
-    </div>
-    <div style="background:var(--card);border:1px solid rgba(240,180,41,.3);border-radius:14px;padding:20px 22px;">
-      <h3 style="font-family:'Bebas Neue';font-size:20px;color:var(--gold);letter-spacing:1px;margin-bottom:12px;">🏆 Final e 3º Lugar</h3>
-      <p style="font-size:13px;line-height:1.9;">• 1 set até <strong>6 games</strong><br>• Em 6x6: <strong>Super Tiebreak</strong> até 10 pontos<br>• Sem limite de tempo — jogar até o fim! 🔥</p>
-    </div>
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 22px;">
-      <h3 style="font-family:'Bebas Neue';font-size:20px;color:var(--sand);letter-spacing:1px;margin-bottom:12px;">📌 Geral</h3>
-      <p style="font-size:13px;line-height:1.9;">• Dupla reporta resultado ao organizador imediatamente<br>• Dúvida em jogada → ponto repetido<br>• Pontualidade é fundamental<br>• Organização pode ajustar em caso de atrasos 🤝</p>
-    </div>
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+    <p class="section-sub" style="margin:0;">Regras visíveis a todos os participantes.</p>
+    <button class="btn btn-secondary btn-sm admin-only" onclick="openRulesEditor()">✏️ Editar Regras</button>
   </div>
+  <div id="rules-display"></div>
 </section>
 
 <!-- MODALS -->
@@ -551,18 +572,23 @@ body.tiebreak-active .score-live{color:var(--gold);}
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div class="form-group">
+        <label>🏟️ Número de Quadras</label>
+        <input type="number" id="cfg-num-courts" min="1" max="10" value="2">
+      </div>
+      <div class="form-group">
+        <label>📆 Número de Dias</label>
+        <input type="number" id="cfg-num-days" min="1" max="7" value="1" onchange="renderDaysEditor()">
+      </div>
       <div class="form-group" style="grid-column:1/-1;">
-        <label>📅 Data do Torneio</label>
-        <input type="date" id="cfg-date">
+        <label>📅 Dias do Torneio</label>
+        <div id="days-editor"></div>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="addDayRow()" style="margin-top:6px;width:100%">+ Adicionar Dia</button>
       </div>
-      <div class="form-group">
-        <label>⏰ Início</label>
-        <input type="time" id="cfg-start" value="09:00">
-      </div>
-      <div class="form-group">
-        <label>🏁 Término previsto</label>
-        <input type="time" id="cfg-end" value="14:00">
-      </div>
+      <!-- hidden legacy fields kept for readConfigForm compat -->
+      <input type="hidden" id="cfg-date" value="">
+      <input type="hidden" id="cfg-start" value="09:00">
+      <input type="hidden" id="cfg-end" value="18:00">
       <div class="form-group" style="grid-column:1/-1;"><div style="height:1px;background:var(--border);margin:4px 0;"></div></div>
       <div class="form-group">
         <label>⏱️ Duração jogo — Grupos (min)</label>
@@ -658,29 +684,11 @@ body.tiebreak-active .score-live{color:var(--gold);}
 const GROUP_NAMES = ['A','B','C','D'];
 const GROUP_COLORS = ['a','b','c','d'];
 
-const INITIAL_DUPLAS = [
-  {m:"José Avila",       f:"Adriana"},
-  {m:"Rodrigo Ribeiro",  f:"Vanessa G"},
-  {m:"Matheus Gomes",    f:"Solange"},
-  {m:"Andrei",           f:"Ana Clara Matos"},
-  {m:"Hugo Henrique",    f:"Paty"},
-  {m:"Marcos",           f:"Bárbara"},
-  {m:"Luca Moreira",     f:"Flavia"},
-  {m:"Richard",          f:"Mari Bocayuva"},
-  {m:"Joaquim",          f:"Dani Filadelpho"},
-  {m:"Thiago Bastos",    f:"Dani Garcia"},
-  {m:"Kauan",            f:"Priscila"},
-  {m:"Murilo",           f:"Letícia"},
-  {m:"Rodrigo Bakendor", f:"Andreza Gazon"},
-  {m:"Walter",           f:"Victoria"},
-  {m:"Henrique Bendran", f:"Anna Gabriela"},
-  {m:"Matheus Zaranza",  f:"Dani Carneiro"},
-  {m:"Matheus Kaizer",   f:"Marcia Vieira"},
-];
+const INITIAL_DUPLAS = [];
 
 const INITIAL_POOL = {
-  homens:  ["José Avila","Rodrigo Ribeiro","Matheus Gomes","Andrei","Hugo Henrique","Marcos","Luca Moreira","Richard","Joaquim","Thiago Bastos","Kauan","Murilo","Rodrigo Bakendor","Walter","Henrique Bendran","Matheus Zaranza","Matheus Kaizer"].map(n=>({name:n,adv:false})),
-  mulheres:["Adriana","Vanessa G","Solange","Ana Clara Matos","Paty","Bárbara","Flavia","Mari Bocayuva","Dani Filadelpho","Dani Garcia","Priscila","Letícia","Andreza Gazon","Victoria","Anna Gabriela","Dani Carneiro","Marcia Vieira","Mariana"].map(n=>({name:n,adv:false}))
+  homens:  [],
+  mulheres:[]
 };
 
 
@@ -898,6 +906,7 @@ function saveCat(key){
   // Save only the changed key within the active category
   const idx = getActiveCatIndex();
   state._lastWriteAt = Date.now();
+  state._schemaVersion = SCHEMA_VERSION;
   localStorage.setItem('bt2_state', JSON.stringify(state));
   if(!fbRef) return;
   const update = { _lastWriteAt: state._lastWriteAt };
@@ -944,12 +953,14 @@ const DEFAULT_CONFIG = {
   adminPass: 'admin123',
   juizPass:  'juiz123',
   sport: 'beach_tennis',
+  rules: null,
   teamMode: 'misto',
   tournamentName: 'Torneio Beach do FDS',
   academy: 'Academia — Duplas Mistas',
-  date: '',
-  startTime: '09:00',
-  endTime: '14:00',
+  numCourts: 2,
+  days: [
+    { date: '', startTime: '09:00', endTime: '18:00', label: 'Dia 1' }
+  ],
   groupDur: 12,
   break1: 10,
   koDur: 20,
@@ -967,6 +978,7 @@ function _readBaked(key){
   } catch(e){ return null; }
 }
 const BAKED_STATE    = _readBaked('state');
+const SCHEMA_VERSION = 8; // bump to reset localStorage on schema change
 const BAKED_FIREBASE = _readBaked('firebase');
 
 let state = loadState();
@@ -1097,8 +1109,12 @@ function loadState(){
   if(saved){
     try{
       const s = JSON.parse(saved);
-      // If site was published with a new baked state, reset localStorage
-      // so the published draw takes effect on all devices
+      // Reset if schema version changed
+      if((s._schemaVersion || 0) < SCHEMA_VERSION){
+        localStorage.removeItem('bt2_state');
+        if(BAKED_STATE) return migrateState(JSON.parse(JSON.stringify(BAKED_STATE)));
+        return buildFreshState([]);
+      }
       if(BAKED_STATE && s._bakedVersion !== BAKED_STATE._bakedVersion){
         localStorage.removeItem('bt2_state');
         return migrateState(JSON.parse(JSON.stringify(BAKED_STATE)));
@@ -2335,6 +2351,7 @@ function showToast(msg){
 }
 
 function showSection(id, btn){
+  if(id === 'pool' && currentRole !== 'admin'){ id = 'duplas'; btn = document.querySelector('.nav-btn[onclick*="duplas"]'); }
   stopTimer();
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -2342,6 +2359,7 @@ function showSection(id, btn){
   if(btn) btn.classList.add('active');
   if(id==='placar') renderLiveSelector();
   if(id==='cronograma') renderCronograma();
+  if(id==='regras') renderRegras();
   sessionStorage.setItem('bt_tab', id);
 }
 
@@ -2527,64 +2545,124 @@ function sortearDoPool(){
 function timeToMins(t){ const [h,m]=t.split(':').map(Number); return h*60+m; }
 function minsToTime(mins){ const h=Math.floor(mins/60)%24; const m=mins%60; return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0'); }
 
+function getNumCourts(){
+  return (state.config && state.config.numCourts) || 2;
+}
+
+function getDays(){
+  const cfg = state.config || DEFAULT_CONFIG;
+  if(cfg.days && cfg.days.length) return cfg.days;
+  // Legacy fallback: single day from old config
+  return [{ date: cfg.date||'', startTime: cfg.startTime||'09:00', endTime: cfg.endTime||'18:00', label:'Dia 1' }];
+}
+
 function calcSchedule(){
   const cfg = state.config || DEFAULT_CONFIG;
-  const courts = 2;
+  const courts = getNumCourts();
+  const days   = getDays();
   const groups = getActiveCat().groups.groups;
   const allMatches = getActiveCat().matches;
 
-  let cursor = timeToMins(cfg.startTime) + 15; // 15min opening
-
-  // ── Group stage ──
-  // Interleave groups: slot i has matches from different groups on each court
-  // Build sequence: round-robin within each group interleaved across groups
+  // Build all match slots ordered by round
   const groupRounds = [];
   groups.forEach((grp, gi) => {
     if(grp.length < 2) return;
     const gms = allMatches.filter(m => m.gi === gi);
     gms.forEach((m, mi) => groupRounds.push({m, gi, slotHint: mi}));
   });
-  // Sort by slotHint then gi so same round of all groups runs together
   groupRounds.sort((a,b) => a.slotHint - b.slotHint || a.gi - b.gi);
 
-  // Assign times: 2 courts simultaneously
+  // KO slots list in order
+  const koSlots = [
+    ...(courts >= 4 ? [['qf1','qf2','qf3','qf4']] : [['qf1','qf2'],['qf3','qf4']]),
+    [['sf1','sf2']],
+    [['fin','3rd']]
+  ].flat(2);
+  const koPhases = { qf1:'qf',qf2:'qf',qf3:'qf',qf4:'qf', sf1:'sf',sf2:'sf', fin:'final','3rd':'final' };
+  const koDurs   = { qf1:cfg.koDur,qf2:cfg.koDur,qf3:cfg.koDur,qf4:cfg.koDur,
+                     sf1:cfg.koDur,sf2:cfg.koDur, fin:cfg.finalDur,'3rd':cfg.finalDur };
+
+  // Multi-day spreading: fill each day with as many matches as fit
   const schedule = {};
-  groupRounds.forEach((item, idx) => {
-    const slot = Math.floor(idx / courts);
-    const court = (idx % courts) + 1;
-    const t = cursor + slot * cfg.groupDur;
-    schedule[item.m.id] = { time: minsToTime(t), court, phase:'grupo' };
-  });
+  let dayIdx = 0;
+  let dayMins = timeToMins(days[0].startTime) + 15; // 15min opening
+  let dayEnd   = timeToMins(days[0].endTime);
 
-  const maxGroupSlot = Math.ceil(groupRounds.length / courts);
-  const groupsEnd = cursor + maxGroupSlot * cfg.groupDur;
-  let koCursor = groupsEnd + cfg.break1;
+  function nextSlot(dur){
+    // Try to fit in current day
+    if(dayMins + dur <= dayEnd){
+      const t = dayMins;
+      dayMins += dur;
+      return { dayIdx, time: minsToTime(t), dayLabel: days[dayIdx].label || ('Dia '+(dayIdx+1)) };
+    }
+    // Move to next day
+    dayIdx = Math.min(dayIdx + 1, days.length - 1);
+    const d = days[dayIdx];
+    dayMins = timeToMins(d.startTime) + 10;
+    dayEnd  = timeToMins(d.endTime);
+    const t = dayMins;
+    dayMins += dur;
+    return { dayIdx, time: minsToTime(t), dayLabel: d.label || ('Dia '+(dayIdx+1)) };
+  }
 
-  // ── QF ──
-  const qfIds = ['qf1','qf2','qf3','qf4'];
-  qfIds.forEach((id, idx) => {
-    const slot = Math.floor(idx / courts);
-    const court = (idx % courts) + 1;
-    schedule[id] = { time: minsToTime(koCursor + slot * cfg.koDur), court, phase:'qf' };
-  });
-  koCursor += Math.ceil(qfIds.length / courts) * cfg.koDur + cfg.break2;
+  // Group stage: assign courts simultaneously, break between slots
+  const totalGroupSlots = Math.ceil(groupRounds.length / courts);
+  for(let slot = 0; slot < totalGroupSlots; slot++){
+    const slotItems = groupRounds.slice(slot * courts, (slot+1) * courts);
+    const slotInfo = nextSlot(cfg.groupDur);
+    slotItems.forEach((item, ci) => {
+      schedule[item.m.id] = { time: slotInfo.time, court: ci+1, phase:'grupo', day: slotInfo.dayIdx, dayLabel: slotInfo.dayLabel };
+    });
+  }
+  dayMins += cfg.break1;
 
-  // ── SF ──
-  const sfIds = ['sf1','sf2'];
-  sfIds.forEach((id, idx) => {
-    schedule[id] = { time: minsToTime(koCursor + idx * 0), court: idx+1, phase:'sf' };
-  });
-  koCursor += cfg.koDur + cfg.break2;
+  // Lunch if needed
+  let lunchStart = null, lunchEnd = null;
 
-  // ── Lunch ──
-  const lunchStart = koCursor;
-  const lunchEnd = lunchStart + cfg.lunchDur;
+  // KO stage
+  const lastGroupDay = groupRounds.length > 0 ? schedule[groupRounds[groupRounds.length-1].m.id]?.day || 0 : 0;
+  const qfSlots   = courts >= 4 ? [['qf1','qf2','qf3','qf4']] : [['qf1','qf2'],['qf3','qf4']];
+  const sfPairs   = [['sf1','sf2']];
+  const finPairs  = [['fin','3rd']];
 
-  // ── Final + 3rd ──
-  schedule['fin'] = { time: minsToTime(lunchEnd), court: 1, phase:'final' };
-  schedule['3rd'] = { time: minsToTime(lunchEnd), court: 2, phase:'final' };
+  // QFs
+  for(const group of qfSlots){
+    const slotInfo = nextSlot(cfg.koDur);
+    group.forEach((id, ci) => {
+      schedule[id] = { time: slotInfo.time, court: ci%courts+1, phase:'qf', day: slotInfo.dayIdx, dayLabel: slotInfo.dayLabel };
+    });
+    dayMins += cfg.break2;
+  }
 
-  return { schedule, groupsEnd, lunchStart, lunchEnd, koCursor };
+  // SFs  
+  for(const group of sfPairs){
+    const slotInfo = nextSlot(cfg.koDur);
+    group.forEach((id, ci) => {
+      schedule[id] = { time: slotInfo.time, court: ci%courts+1, phase:'sf', day: slotInfo.dayIdx, dayLabel: slotInfo.dayLabel };
+    });
+    dayMins += cfg.break2;
+  }
+
+  // Lunch before final
+  lunchStart = dayMins;
+  dayMins += cfg.lunchDur;
+  lunchEnd = dayMins;
+
+  // Finals
+  for(const group of finPairs){
+    const slotInfo = nextSlot(cfg.finalDur);
+    group.forEach((id, ci) => {
+      schedule[id] = { time: slotInfo.time, court: ci%courts+1, phase:'final', day: slotInfo.dayIdx, dayLabel: slotInfo.dayLabel };
+    });
+  }
+
+  // Compute groupsEnd from last group match
+  const groupEntries = Object.values(schedule).filter(s => s.phase==='grupo');
+  const groupsEnd = groupEntries.length > 0
+    ? Math.max(...groupEntries.map(s => timeToMins(s.time) + cfg.groupDur))
+    : timeToMins(getDays()[0].startTime) + 15;
+
+  return { schedule, groupsEnd, lunchStart, lunchEnd, numDays: dayIdx+1, days };
 }
 
 function getSchedulePreview(){
@@ -2592,21 +2670,14 @@ function getSchedulePreview(){
   const sc = calcSchedule();
   const fmt = (mins) => minsToTime(mins);
   const totalMatches = getActiveCat().matches.length;
-  const courts = 2;
+  const courts = getNumCourts();
+  const days = getDays();
   const groupSlots = Math.ceil(totalMatches / courts);
-  const groupsEndStr = fmt(sc.groupsEnd);
-  const qfStr = fmt(timeToMins(cfg.startTime) + 15 + groupSlots * cfg.groupDur + cfg.break1);
-  const lunchStr = fmt(sc.lunchStart);
-  const finalStr = fmt(sc.lunchEnd);
-  const endStr = fmt(sc.lunchEnd + cfg.finalDur);
-  return `📋 <strong>Resumo do cronograma calculado:</strong><br>
-    🎾 Grupos: ${cfg.startTime} → ${groupsEndStr} (${totalMatches} jogos, 2 quadras)<br>
-    ⏸ Intervalo + Apuração: ${cfg.break1} min<br>
-    ⚔️ Quartas: ${qfStr}<br>
-    🔥 Semifinais: depois das quartas (+${cfg.break2} min)<br>
-    🍽️ Almoço: ${lunchStr} (${cfg.lunchDur} min)<br>
-    🏆 Final + 3º: ${finalStr}<br>
-    🏁 Término previsto: <strong>${endStr}</strong>`;
+  return `📋 <strong>Resumo:</strong> ${sc.numDays} dia(s) · ${courts} quadra(s) · ${totalMatches} jogos de grupo<br>
+    🎾 Grupos: ${groupSlots} rodadas · ~${groupSlots * cfg.groupDur} min<br>
+    ⚔️ Quartas → Semis → Final<br>
+    🍽️ Almoço: ${cfg.lunchDur} min antes da final<br>
+    📅 ${days.map(d=>`<strong>${d.label||'Dia'}</strong> ${d.startTime}–${d.endTime}`).join(' | ')}`;
 }
 
 function updateTeamModeOptions(){
@@ -2618,6 +2689,49 @@ function updateTeamModeOptions(){
     const info = TEAM_MODE_LABELS[tm] || { label: tm, icon: '👥' };
     return `<option value="${tm}" ${tm===current?'selected':''}>${info.icon} ${info.label}</option>`;
   }).join('');
+}
+
+function renderDaysEditor(){
+  const editor = document.getElementById('days-editor');
+  if(!editor) return;
+  const n = parseInt(document.getElementById('cfg-num-days').value) || 1;
+  const days = getDays();
+  // Resize days array
+  while(days.length < n) days.push({date:'', startTime:'09:00', endTime:'18:00', label:'Dia '+(days.length+1)});
+  editor.innerHTML = days.slice(0,n).map((d,i) => `
+    <div class="day-row" id="day-row-${i}">
+      <span class="day-label">${d.label||('Dia '+(i+1))}</span>
+      <input type="date" id="day-date-${i}" value="${d.date||''}" placeholder="Data">
+      <input type="time" id="day-start-${i}" value="${d.startTime||'09:00'}">
+      <input type="time" id="day-end-${i}" value="${d.endTime||'18:00'}">
+      ${n > 1 ? `<button class="icon-btn del" onclick="removeDayRow(${i})">🗑️</button>` : '<span></span>'}
+    </div>`).join('');
+}
+
+function addDayRow(){
+  const nEl = document.getElementById('cfg-num-days');
+  nEl.value = (parseInt(nEl.value)||1) + 1;
+  renderDaysEditor();
+}
+
+function removeDayRow(idx){
+  const days = getDays().filter((_,i) => i !== idx);
+  state.config.days = days;
+  document.getElementById('cfg-num-days').value = days.length;
+  renderDaysEditor();
+}
+
+function readDaysFromEditor(){
+  const n = parseInt(document.getElementById('cfg-num-days').value) || 1;
+  const days = [];
+  for(let i = 0; i < n; i++){
+    const date  = (document.getElementById(`day-date-${i}`)  || {}).value || '';
+    const start = (document.getElementById(`day-start-${i}`) || {}).value || '09:00';
+    const end   = (document.getElementById(`day-end-${i}`)   || {}).value || '18:00';
+    const prevLabel = (getDays()[i] || {}).label || ('Dia '+(i+1));
+    days.push({ date, startTime: start, endTime: end, label: prevLabel });
+  }
+  return days;
 }
 
 function openConfigModal(){
@@ -2644,10 +2758,13 @@ function openConfigModal(){
   if(nameEl) nameEl.value = cfg.tournamentName || 'Torneio Beach do FDS';
   const acadEl = document.getElementById('cfg-academy');
   if(acadEl) acadEl.value = cfg.academy || '';
-  // Time section
-  document.getElementById('cfg-date').value    = cfg.date || '';
-  document.getElementById('cfg-start').value   = cfg.startTime || '09:00';
-  document.getElementById('cfg-end').value     = cfg.endTime   || '14:00';
+  // Courts + Days section
+  const courtsEl = document.getElementById('cfg-num-courts');
+  if(courtsEl) courtsEl.value = cfg.numCourts || 2;
+  const days = cfg.days || [{ date: cfg.date||'', startTime: cfg.startTime||'09:00', endTime: cfg.endTime||'18:00', label:'Dia 1' }];
+  const numDaysEl = document.getElementById('cfg-num-days');
+  if(numDaysEl){ numDaysEl.value = days.length; }
+  setTimeout(renderDaysEditor, 20);
   document.getElementById('cfg-group-dur').value = cfg.groupDur || 12;
   document.getElementById('cfg-break1').value  = cfg.break1  || 10;
   document.getElementById('cfg-ko-dur').value  = cfg.koDur   || 20;
@@ -2660,7 +2777,7 @@ function openConfigModal(){
   },50);
   updateConfigPreview();
   document.getElementById('modal-config').classList.add('open');
-  ['cfg-date','cfg-start','cfg-end','cfg-group-dur','cfg-break1','cfg-ko-dur','cfg-lunch','cfg-final-dur','cfg-break2'].forEach(id => {
+  ['cfg-num-courts','cfg-num-days','cfg-group-dur','cfg-break1','cfg-ko-dur','cfg-lunch','cfg-final-dur','cfg-break2'].forEach(id => {
     const el = document.getElementById(id);
     if(el) el.oninput = updateConfigPreview;
   });
@@ -2675,19 +2792,24 @@ function updateConfigPreview(){
 }
 
 function readConfigForm(){
-  const sportEl = document.getElementById('cfg-sport');
-  const tmEl    = document.getElementById('cfg-team-mode');
-  const nameEl  = document.getElementById('cfg-name');
-  const acadEl  = document.getElementById('cfg-academy');
+  const sportEl  = document.getElementById('cfg-sport');
+  const tmEl     = document.getElementById('cfg-team-mode');
+  const nameEl   = document.getElementById('cfg-name');
+  const acadEl   = document.getElementById('cfg-academy');
+  const courtsEl = document.getElementById('cfg-num-courts');
   const cfg = state.config || {};
+  const days = readDaysFromEditor();
   return {
-    sport:          (sportEl && sportEl.value) || cfg.sport || 'beach_tennis',
-    teamMode:       (tmEl    && tmEl.value)    || cfg.teamMode || 'misto',
-    tournamentName: (nameEl  && nameEl.value.trim()) || cfg.tournamentName || 'Torneio Beach do FDS',
-    academy:        (acadEl  && acadEl.value.trim()) || cfg.academy || '',
-    date:      document.getElementById('cfg-date').value,
-    startTime: document.getElementById('cfg-start').value || '09:00',
-    endTime:   document.getElementById('cfg-end').value   || '14:00',
+    sport:          (sportEl  && sportEl.value)  || cfg.sport || 'beach_tennis',
+    teamMode:       (tmEl     && tmEl.value)     || cfg.teamMode || 'misto',
+    tournamentName: (nameEl   && nameEl.value.trim()) || cfg.tournamentName || 'Torneio Beach do FDS',
+    academy:        (acadEl   && acadEl.value.trim()) || cfg.academy || '',
+    numCourts:      parseInt((courtsEl && courtsEl.value) || cfg.numCourts || 2),
+    days:           days.length ? days : [{ date:'', startTime:'09:00', endTime:'18:00', label:'Dia 1' }],
+    // legacy compat
+    date:      days[0] ? days[0].date : '',
+    startTime: days[0] ? days[0].startTime : '09:00',
+    endTime:   days[0] ? days[0].endTime : '18:00',
     groupDur:  parseInt(document.getElementById('cfg-group-dur').value) || 12,
     break1:    parseInt(document.getElementById('cfg-break1').value)    || 10,
     koDur:     parseInt(document.getElementById('cfg-ko-dur').value)    || 20,
@@ -2771,50 +2893,133 @@ function updateHeroMeta(){
   }
 }
 
+let _activeCronDay = 0;
+
 function renderCronograma(){
   const wrap = document.getElementById('sched-wrap-dynamic');
+  const tabsBar = document.getElementById('day-tabs-bar');
   if(!wrap) return;
   const cfg = state.config || DEFAULT_CONFIG;
+  const courts = getNumCourts();
+  const days = getDays();
   const sc = calcSchedule();
-  const totalMatches = getActiveCat().matches.length;
-  const courts = 2;
-  const groupSlots = Math.ceil(totalMatches / courts);
-  const T = (mins) => minsToTime(mins);
-  const startMins = timeToMins(cfg.startTime);
+  const cat = getActiveCat();
+  const allMatches = cat.matches;
+  const duplas = cat.duplas;
+  const totalMatches = allMatches.length;
+  const overrides = (state.scheduleOverrides) || {};
 
-  const groupsStartStr = T(startMins + 15);
-  const groupsEndStr   = T(sc.groupsEnd);
-  const break1EndStr   = T(sc.groupsEnd + cfg.break1);
-  const koCursor       = sc.groupsEnd + cfg.break1;
-  const qfEndStr       = T(koCursor + Math.ceil(4/courts) * cfg.koDur);
-  const sfStart        = koCursor + Math.ceil(4/courts) * cfg.koDur + cfg.break2;
-  const sfEndStr       = T(sfStart + cfg.koDur);
-  const lunchEndStr    = T(sc.lunchEnd);
-  const finEndStr      = T(sc.lunchEnd + cfg.finalDur);
+  // Build day tabs
+  if(tabsBar){
+    if(days.length <= 1){
+      tabsBar.innerHTML = '';
+    } else {
+      _activeCronDay = Math.min(_activeCronDay, days.length-1);
+      tabsBar.innerHTML = days.map((d,i) => `
+        <button class="day-tab ${i===_activeCronDay?'active':''}" onclick="_activeCronDay=${i};renderCronograma()">
+          ${d.label||('Dia '+(i+1))}${d.date ? ' · '+new Date(d.date+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : ''}
+        </button>`).join('');
+    }
+  }
 
-  // Date header
+  const dayFilter = days.length > 1 ? _activeCronDay : null;
+  const day = days[dayFilter !== null ? dayFilter : 0];
+
+  // Day header
   let dateStr = '';
-  if(cfg.date){
-    const d = new Date(cfg.date + 'T12:00:00');
+  if(day.date){
+    const d = new Date(day.date + 'T12:00:00');
     dateStr = d.toLocaleDateString('pt-BR', {weekday:'long', day:'2-digit', month:'long', year:'numeric'});
   }
 
-  const blocks = [
-    { cls:'hl', time: cfg.startTime, title:'🏖️ Abertura & Sorteio ao Vivo', desc:'Apresentação das duplas, sorteio dos grupos e regras.', tag:'tg', tagLabel:'15 min' },
-    { cls:'', time: groupsStartStr, title:'🎾 Fase de Grupos', desc:`${totalMatches} jogos em 2 quadras simultâneas, ~${cfg.groupDur} min cada.`, tag:'tg', tagLabel:`~${groupSlots * cfg.groupDur} min · ${totalMatches} jogos` },
-    { cls:'', time: groupsEndStr, title:'⏸ Intervalo + Apuração', desc:'Hidratação e definição dos classificados para as quartas.', tag:'tg', tagLabel:`${cfg.break1} min` },
-    { cls:'', time: break1EndStr, title:'⚔️ Quartas de Final', desc:'4 jogos simultâneos nas 2 quadras. Sets até 6 com tiebreak.', tag:'tk', tagLabel:`~${Math.ceil(4/courts)*cfg.koDur} min · 4 jogos` },
-    { cls:'', time: T(sfStart), title:'🔥 Semifinais', desc:'2 jogos simultâneos, um por quadra.', tag:'tk', tagLabel:`~${cfg.koDur} min · 2 jogos` },
-    { cls:'', time: sfEndStr, title:'✅ Finalistas Definidos', desc:'Pequeno intervalo antes do almoço. Hora de relaxar!', tag:'tk', tagLabel:`${cfg.break2} min` },
-    { cls:'lunch', time: T(sc.lunchStart), title:'🍽️ Almoço', desc:'Pausa para refeição. Recarregue as energias!', tag:'tl', tagLabel:`${cfg.lunchDur} min` },
-    { cls:'fin', time: lunchEndStr, title:'🥉 3º Lugar + 🏆 Grande Final', desc:'Simultâneos nas 2 quadras. Set até 6 + Super Tiebreak na final.', tag:'tf', tagLabel:`~${cfg.finalDur} min · 2 jogos` },
-    { cls:'fin', time: finEndStr, title:'🎉 Premiação e Encerramento', desc:'Entrega dos prêmios, foto geral e encerramento oficial!', tag:'tf', tagLabel:`até ${cfg.endTime}` },
-  ];
+  // Build phase-level summary blocks (not per-match)
+  const items = [];
+
+  // Opening (day 0 only)
+  if(dayFilter === null || dayFilter === 0){
+    items.push({ time: day.startTime, sortMins: timeToMins(day.startTime),
+      cls:'hl', title:'🏖️ Abertura & Sorteio', desc:'Apresentação das categorias, sorteio dos grupos e leitura das regras.', tag:'tg', tagLabel:'15 min' });
+  }
+
+  // Group stage — one block per category on this day
+  const groupEntries = Object.entries(sc.schedule).filter(([id,s]) => s.phase==='grupo' && (dayFilter===null||s.day===dayFilter));
+  if(groupEntries.length > 0){
+    const firstTime = groupEntries.reduce((min,[,s]) => timeToMins(s.time)<timeToMins(min)?s.time:min, groupEntries[0][1].time);
+    const lastEntry  = groupEntries.reduce((max,[,s]) => timeToMins(s.time)>timeToMins(max.time)?s:max, groupEntries[0][1]);
+    const endTime    = minsToTime(timeToMins(lastEntry.time) + cfg.groupDur);
+    const totalGrp   = groupEntries.length;
+    const groupSlots = Math.ceil(totalGrp / courts);
+    items.push({ time: firstTime, sortMins: timeToMins(firstTime),
+      cls:'', title:'🎾 Fase de Grupos',
+      desc:`${totalGrp} jogos em ${courts} quadra${courts>1?'s':''} simultâneas • ~${cfg.groupDur} min por jogo`,
+      tag:'tg', tagLabel:`~${groupSlots * cfg.groupDur} min · ${totalGrp} jogos · término ~${endTime}` });
+  }
+
+  // Break after groups
+  const grpEndMins = groupEntries.length > 0
+    ? Math.max(...groupEntries.map(([,s]) => timeToMins(s.time))) + cfg.groupDur
+    : null;
+  if(grpEndMins && (dayFilter===null || dayFilter===0)){
+    items.push({ time: minsToTime(grpEndMins), sortMins: grpEndMins,
+      cls:'', title:'⏸ Intervalo + Apuração', desc:'Hidratação e definição dos classificados para as quartas.',
+      tag:'tg', tagLabel:`${cfg.break1} min` });
+  }
+
+  // QFs
+  const qfEntries = ['qf1','qf2','qf3','qf4'].map(id => overrides[id]||sc.schedule[id]).filter(s=>s&&(dayFilter===null||s.day===dayFilter));
+  if(qfEntries.length > 0){
+    const t = qfEntries[0].time;
+    const dur = Math.ceil(qfEntries.length/courts)*cfg.koDur;
+    items.push({ time:t, sortMins:timeToMins(t),
+      cls:'', title:'⚔️ Quartas de Final',
+      desc:`${qfEntries.length} jogos em ${Math.min(courts,qfEntries.length)} quadra${courts>1?'s':''}`,
+      tag:'tk', tagLabel:`~${dur} min · ${qfEntries.length} jogos` });
+  }
+
+  // SFs
+  const sfEntries = ['sf1','sf2'].map(id => overrides[id]||sc.schedule[id]).filter(s=>s&&(dayFilter===null||s.day===dayFilter));
+  if(sfEntries.length > 0){
+    const t = sfEntries[0].time;
+    items.push({ time:t, sortMins:timeToMins(t),
+      cls:'', title:'🔥 Semifinais',
+      desc:'2 jogos simultâneos, um por quadra.',
+      tag:'tk', tagLabel:`~${cfg.koDur} min · 2 jogos` });
+  }
+
+  // Lunch
+  if(sc.lunchStart !== null){
+    const lunchDayIdx = dayFilter !== null ? dayFilter : days.length-1;
+    if(dayFilter === null || dayFilter === lunchDayIdx){
+      items.push({ time: minsToTime(sc.lunchStart), sortMins: sc.lunchStart,
+        cls:'lunch', title:'🍽️ Almoço / Intervalo', desc:'Refeição e descanso antes das finais.',
+        tag:'tl', tagLabel:`${cfg.lunchDur} min` });
+    }
+  }
+
+  // Finals
+  const finEntries = ['fin','3rd'].map(id => overrides[id]||sc.schedule[id]).filter(s=>s&&(dayFilter===null||s.day===dayFilter));
+  if(finEntries.length > 0){
+    const t = finEntries[0].time;
+    const endFin = minsToTime(timeToMins(t) + cfg.finalDur);
+    items.push({ time:t, sortMins:timeToMins(t),
+      cls:'fin', title:'🥉 3º Lugar + 🏆 Grande Final',
+      desc:`Simultâneos nas ${Math.min(courts,2)} quadras. Set até 6 + Super Tiebreak na final.`,
+      tag:'tf', tagLabel:`~${cfg.finalDur} min · encerra ~${endFin}` });
+    items.push({ time:endFin, sortMins:timeToMins(endFin),
+      cls:'fin', title:'🎉 Premiação e Encerramento',
+      desc:'Entrega dos prêmios, foto geral e encerramento oficial!',
+      tag:'tf', tagLabel:`até ${day.endTime}` });
+  }
+
+  // Sort by time
+  items.sort((a,b) => a.sortMins - b.sortMins);
 
   wrap.innerHTML = (dateStr ? `<div style="text-align:center;color:var(--gold);font-size:14px;font-weight:700;margin-bottom:14px;text-transform:capitalize;">📅 ${dateStr}</div>` : '')
-    + blocks.map(b => `
+    + `<div style="font-size:12px;color:var(--muted);margin-bottom:12px;">🏟️ ${courts} quadra${courts>1?'s':''} · ${days.length} dia${days.length>1?'s':''}</div>`
+    + (items.length === 0 ? `<div class="no-match-msg">📭 Nenhuma partida neste dia ainda.</div>` : '')
+    + items.map(b => `
     <div class="sched-block ${b.cls}">
-      <div class="sched-time">${b.time}</div>
+      <div class="sched-time">${b.time}${b.court ? `<br><span style="font-size:10px;color:var(--muted)">Q${b.court}</span>` : ''}</div>
       <div class="sched-info">
         <h3>${b.title}</h3>
         <p>${b.desc}</p>
@@ -2878,6 +3083,429 @@ function doPublicar(){
   if(s1){ s1.style.background='rgba(56,217,169,.1)'; s1.style.borderLeft='3px solid var(--success)'; }
 }
 
+
+
+// ── POOL IMPORT ──────────────────────────────────────────────────────
+let _importParsed = []; // [{name, gender, category, nivel}]
+
+function openImportModal(){
+  _importParsed = [];
+  document.getElementById('modal-import').classList.add('open');
+  switchImportTab('excel');
+  document.getElementById('import-distribute-opt').style.display = 'none';
+  document.getElementById('btn-confirm-import').style.display = 'none';
+  document.getElementById('xlsx-preview').innerHTML = '';
+  document.getElementById('paste-preview').innerHTML = '';
+  const sheetsP = document.getElementById('sheets-preview');
+  if(sheetsP) sheetsP.innerHTML = '';
+}
+
+function switchImportTab(tab){
+  ['excel','paste','sheets'].forEach(t => {
+    const pane = document.getElementById('imp-pane-'+t);
+    const btn  = document.getElementById('imp-tab-'+t);
+    if(pane) pane.style.display = t===tab ? '' : 'none';
+    if(btn)  btn.classList.toggle('btn-primary', t===tab);
+    if(btn)  btn.classList.toggle('btn-secondary', t!==tab);
+  });
+}
+
+// ── Column name normalizer ──
+function normalizeColName(n){
+  return n.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+}
+
+function detectColumns(headers){
+  const map = {};
+  headers.forEach((h,i) => {
+    const n = normalizeColName(h);
+    if(!map.nome  && ['nome','name','jogador','player','participante'].includes(n)) map.nome = i;
+    if(!map.gender && ['genero','gender','sexo','m_f','mf','sex'].includes(n)) map.gender = i;
+    if(!map.cat   && ['categoria','category','cat','modalidade','tipo'].includes(n)) map.cat = i;
+    if(!map.nivel && ['nivel','level','classe','ranking','category2'].includes(n)) map.nivel = i;
+  });
+  return map;
+}
+
+function normalizeGender(v){
+  if(!v) return 'M';
+  const s = String(v).trim().toUpperCase()[0];
+  return (s === 'F' || s === 'W') ? 'F' : 'M';
+}
+
+function parseRows(rows, headers){
+  const colMap = detectColumns(headers);
+  if(colMap.nome === undefined){
+    // Try first column as name
+    colMap.nome = 0;
+  }
+  return rows.filter(r => r[colMap.nome] && String(r[colMap.nome]).trim()).map(r => ({
+    name:     String(r[colMap.nome]).trim(),
+    gender:   colMap.gender !== undefined ? normalizeGender(r[colMap.gender]) : 'M',
+    category: colMap.cat !== undefined ? String(r[colMap.cat]||'').trim() : '',
+    nivel:    colMap.nivel !== undefined ? String(r[colMap.nivel]||'').trim() : '',
+  }));
+}
+
+function showImportPreview(parsed){
+  _importParsed = parsed;
+  const hasCat = parsed.some(p => p.category);
+  document.getElementById('import-distribute-opt').style.display = hasCat ? '' : 'none';
+  document.getElementById('btn-confirm-import').style.display = parsed.length > 0 ? '' : 'none';
+  return `<div style="margin-top:8px;background:rgba(43,191,176,.06);border:1px solid rgba(43,191,176,.2);border-radius:10px;padding:12px;">
+    <p style="font-size:12px;font-weight:700;color:var(--teal);margin-bottom:8px;">✅ ${parsed.length} jogador(es) encontrado(s)</p>
+    <div style="max-height:150px;overflow-y:auto;display:grid;gap:4px;">
+      ${parsed.slice(0,30).map(p =>
+        `<div style="font-size:12px;display:flex;gap:8px;align-items:center;">
+          <span style="color:${p.gender==='F'?'var(--coral-l)':'var(--teal)'};">${p.gender==='F'?'👩':'👨'}</span>
+          <span style="flex:1">${p.name}</span>
+          ${p.category ? `<span style="background:var(--card2);border-radius:5px;padding:1px 6px;font-size:11px;color:var(--muted);">${p.category}</span>` : ''}
+        </div>`).join('')}
+      ${parsed.length > 30 ? `<p style="font-size:11px;color:var(--muted);">...e mais ${parsed.length-30}</p>` : ''}
+    </div>
+  </div>`;
+}
+
+// ── XLSX Upload ──
+function handleXlsxUpload(evt){
+  const file = evt.target.files[0];
+  if(!file){ return; }
+  const preview = document.getElementById('xlsx-preview');
+  preview.innerHTML = '<p style="color:var(--muted);font-size:13px;">⏳ Lendo arquivo...</p>';
+
+  // Load SheetJS from CDN if not present
+  function processXlsx(){
+    const reader = new FileReader();
+    reader.onload = function(e){
+      try {
+        const data = new Uint8Array(e.target.result);
+        const wb = XLSX.read(data, {type:'array'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+        if(rows.length < 2){ preview.innerHTML = '<p style="color:var(--coral)">⚠️ Planilha vazia ou sem dados.</p>'; return; }
+        const headers = rows[0].map(String);
+        const dataRows = rows.slice(1).filter(r => r.some(c => String(c).trim()));
+        const parsed = parseRows(dataRows, headers);
+        preview.innerHTML = showImportPreview(parsed);
+      } catch(err){
+        preview.innerHTML = `<p style="color:var(--coral)">❌ Erro ao ler arquivo: ${err.message}</p>`;
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  if(typeof XLSX === 'undefined'){
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = processXlsx;
+    s.onerror = () => { preview.innerHTML = '<p style="color:var(--coral)">❌ Não foi possível carregar a biblioteca. Verifique sua conexão.</p>'; };
+    document.head.appendChild(s);
+  } else {
+    processXlsx();
+  }
+}
+
+// ── Paste input ──
+function parsePasteInput(){
+  const text = (document.getElementById('paste-input').value || '').trim();
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const parsed = lines.map(line => {
+    const parts = line.split(/[;,\t]/);
+    return {
+      name:     (parts[0]||'').trim(),
+      gender:   normalizeGender(parts[1]),
+      category: (parts[2]||'').trim(),
+      nivel:    (parts[3]||'').trim(),
+    };
+  }).filter(p => p.name);
+  document.getElementById('paste-preview').innerHTML = showImportPreview(parsed);
+}
+
+// ── Google Sheets fetch ──
+function fetchGoogleSheets(){
+  const url = (document.getElementById('sheets-url').value||'').trim();
+  const preview = document.getElementById('sheets-preview');
+  if(!url){ showToast('⚠️ Cole a URL do Google Sheets.'); return; }
+  
+  // Extract sheet ID
+  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if(!match){ preview.innerHTML = '<p style="color:var(--coral)">❌ URL inválida. Use o link de compartilhamento do Google Sheets.</p>'; return; }
+  const sheetId = match[1];
+  const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
+  
+  preview.innerHTML = '<p style="color:var(--muted);font-size:13px;">⏳ Buscando planilha...</p>';
+  
+  fetch(csvUrl)
+    .then(r => { if(!r.ok) throw new Error('Planilha não encontrada ou não é pública (status '+r.status+')'); return r.text(); })
+    .then(csv => {
+      const lines = csv.split('\n').map(l => l.trim()).filter(Boolean);
+      if(lines.length < 2){ preview.innerHTML = '<p style="color:var(--coral)">⚠️ Planilha vazia.</p>'; return; }
+      const headers = lines[0].split(',').map(h => h.replace(/^"|"$/g,'').trim());
+      const rows = lines.slice(1).map(l => l.split(',').map(c => c.replace(/^"|"$/g,'').trim()));
+      const parsed = parseRows(rows, headers);
+      preview.innerHTML = showImportPreview(parsed);
+    })
+    .catch(err => {
+      preview.innerHTML = `<p style="color:var(--coral)">❌ ${err.message}<br><span style="font-size:11px;">Certifique-se que a planilha está com acesso público.</span></p>`;
+    });
+}
+
+// ── Confirm import + auto-distribute ──
+function confirmImport(){
+  if(!_importParsed || !_importParsed.length){ showToast('⚠️ Nenhum dado para importar.'); return; }
+  
+  const distMode = document.querySelector('input[name="dist-mode"]:checked');
+  const autoDistribute = distMode ? distMode.value === 'auto' : false;
+  const hasCat = _importParsed.some(p => p.category);
+
+  if(autoDistribute && hasCat){
+    importWithAutoDistribute(_importParsed);
+  } else {
+    importToCurrentPool(_importParsed);
+  }
+  closeModals();
+}
+
+function importToCurrentPool(players){
+  const cat = getActiveCat();
+  let added = 0;
+  players.forEach(p => {
+    if(!p.name) return;
+    const list = cat.pool[p.gender==='F' ? 'mulheres' : 'homens'];
+    if(!list.find(x => x.name === p.name)){
+      list.push({ name: p.name, adv: false });
+      added++;
+    }
+  });
+  saveCat('pool');
+  renderPool();
+  showToast(`✅ ${added} jogador(es) adicionado(s) ao pool!`);
+}
+
+function importWithAutoDistribute(players){
+  // Group players by their category field
+  const byCategory = {};
+  players.forEach(p => {
+    const catKey = p.category || 'Geral';
+    if(!byCategory[catKey]) byCategory[catKey] = [];
+    byCategory[catKey].push(p);
+  });
+
+  let totalAdded = 0;
+  const catKeys = Object.keys(byCategory);
+  
+  catKeys.forEach(catName => {
+    // Find or create a matching tournament category
+    let tourCat = (state.categories || []).find(c =>
+      c.name.toLowerCase() === catName.toLowerCase() ||
+      c.teamMode === catName.toLowerCase()
+    );
+    if(!tourCat){
+      // Auto-detect team mode from category name
+      const nm = catName.toLowerCase();
+      let teamMode = 'misto';
+      if(nm.includes('masc') || nm.includes('m ') || nm === 'm') teamMode = 'masculino';
+      else if(nm.includes('fem') || nm.includes('f ') || nm === 'f') teamMode = 'feminino';
+      addCategory(catName, teamMode);
+      tourCat = state.categories[state.categories.length-1];
+    }
+    
+    // Add players to category pool
+    byCategory[catName].forEach(p => {
+      const list = tourCat.pool[p.gender==='F' ? 'mulheres' : 'homens'];
+      if(!list.find(x => x.name === p.name)){
+        list.push({ name: p.name, adv: false });
+        totalAdded++;
+      }
+    });
+  });
+
+  saveState('categories');
+  renderCategoryTabs();
+  renderPool();
+  showToast(`✅ ${totalAdded} jogador(es) distribuído(s) em ${catKeys.length} categoria(s)!`);
+}
+// ─────────────────────────────────────────────────────────────────────
+// ── RULES ────────────────────────────────────────────────────────────
+const DEFAULT_RULES = [
+  { title:'🎯 Fase de Grupos', accent:'accent-coral',
+    text:'• Sets curtos até 4 games, sem tiebreak\n• Vitória = 3 pts | Derrota = 0 pts | WO = -1 pt\n• Desempate: saldo de games → confronto direto\n• 2 primeiros de cada grupo avançam\n• Limite de 10 min por partida' },
+  { title:'⚔️ Quartas e Semifinais', accent:'accent-teal',
+    text:'• 1 set até 6 games\n• Tiebreak em 6x6 até 7 pontos\n• Limite: 20 min (quartas) / 30 min (semis)' },
+  { title:'🏆 Final e 3º Lugar', accent:'accent-gold',
+    text:'• 1 set até 6 games\n• Em 6x6: Super Tiebreak até 10 pontos\n• Sem limite de tempo — jogar até o fim! 🔥' },
+  { title:'📌 Geral', accent:'accent-sand',
+    text:'• Dupla reporta resultado ao organizador imediatamente\n• Dúvida em jogada → ponto repetido\n• Pontualidade é fundamental\n• Organização pode ajustar em caso de atrasos 🤝' },
+];
+
+function getRules(){
+  return (state.config && state.config.rules) || DEFAULT_RULES;
+}
+
+function renderRegras(){
+  const wrap = document.getElementById('rules-display');
+  if(!wrap) return;
+  const rules = getRules();
+  wrap.innerHTML = '<div class="rules-editor-wrap">' +
+    rules.map(r => `
+      <div class="rule-block ${r.accent||''}">
+        <h3>${r.title}</h3>
+        <p>${r.text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</p>
+      </div>`).join('') + '</div>';
+}
+
+function openRulesEditor(){
+  const rules = getRules();
+  const modal = document.getElementById('modal-rules');
+  if(!modal) return;
+  const cont = document.getElementById('rules-editor-content');
+  if(cont){
+    cont.innerHTML = rules.map((r,i) => `
+      <div style="margin-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <input class="form-input" style="flex:1" id="rule-title-${i}" value="${r.title.replace(/"/g,'&quot;')}" placeholder="Título da seção">
+          <button class="icon-btn del" onclick="deleteRuleBlock(${i})">🗑️</button>
+        </div>
+        <textarea class="rules-textarea" id="rule-text-${i}" placeholder="Regras (uma por linha com •)">${r.text}</textarea>
+      </div>`).join('')
+      + `<button class="btn btn-secondary" onclick="addRuleBlock()" style="width:100%;margin-top:4px">+ Adicionar Seção</button>`;
+  }
+  modal.classList.add('open');
+}
+
+function addRuleBlock(){
+  const rules = readRulesFromEditor();
+  rules.push({ title:'📌 Nova Seção', accent:'accent-sand', text:'• Nova regra aqui' });
+  state.config.rules = rules;
+  openRulesEditor();
+}
+
+function deleteRuleBlock(idx){
+  const rules = readRulesFromEditor().filter((_,i) => i !== idx);
+  state.config.rules = rules;
+  openRulesEditor();
+}
+
+function readRulesFromEditor(){
+  const rules = [];
+  let i = 0;
+  while(document.getElementById('rule-title-'+i)){
+    const title = document.getElementById('rule-title-'+i).value;
+    const text  = document.getElementById('rule-text-'+i).value;
+    rules.push({ title, text, accent: DEFAULT_RULES[i] ? DEFAULT_RULES[i].accent : 'accent-sand' });
+    i++;
+  }
+  return rules;
+}
+
+function saveRules(){
+  state.config.rules = readRulesFromEditor();
+  saveState('config');
+  closeModals();
+  renderRegras();
+  showToast('✅ Regras salvas!');
+}
+
+// ── SCHEDULE OVERRIDE ────────────────────────────────────────────────
+function openScheduleOverrideModal(){
+  const modal = document.getElementById('modal-sched-override');
+  if(!modal) return;
+  renderScheduleOverrideList();
+  modal.classList.add('open');
+}
+
+function renderScheduleOverrideList(){
+  const cont = document.getElementById('sched-override-content');
+  if(!cont) return;
+  const sc = calcSchedule();
+  const cfg = state.config || DEFAULT_CONFIG;
+  const courts = getNumCourts();
+  const overrides = state.scheduleOverrides || {};
+  const cat = getActiveCat();
+
+  // Build list of all matches with their current schedule
+  const rows = [];
+
+  // Group matches
+  cat.matches.forEach(m => {
+    const s = overrides[m.id] || sc.schedule[m.id];
+    if(!s) return;
+    const d1 = cat.duplas[m.d1]||{m:'?',f:''};
+    const d2 = cat.duplas[m.d2]||{m:'?',f:''};
+    const n1 = d1.m + (d1.f?'/'+d1.f:'');
+    const n2 = d2.m + (d2.f?'/'+d2.f:'');
+    rows.push({ id:m.id, label:`Grupo ${['A','B','C','D'][m.gi]}: ${n1} vs ${n2}`,
+      time: s.time, court: s.court, day: s.day||0 });
+  });
+
+  // KO matches
+  const koLabels = { qf1:'Quarta 1',qf2:'Quarta 2',qf3:'Quarta 3',qf4:'Quarta 4',
+                     sf1:'Semi 1',sf2:'Semi 2',fin:'Final','3rd':'3º Lugar' };
+  Object.keys(koLabels).forEach(id => {
+    const s = overrides[id] || sc.schedule[id];
+    if(!s) return;
+    rows.push({ id, label:koLabels[id], time:s.time, court:s.court, day:s.day||0 });
+  });
+
+  const days = getDays();
+  const courtOpts = Array.from({length:courts},(_,i)=>i+1).map(c=>`<option value="${c}">Q${c}</option>`).join('');
+  const dayOpts = days.map((d,i)=>`<option value="${i}">${d.label||'Dia '+(i+1)}</option>`).join('');
+
+  cont.innerHTML = `
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Ajuste horário e quadra de qualquer partida. Salve para aplicar.</p>
+    <div style="display:grid;gap:6px;">
+      ${rows.map(r => `
+        <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center;background:var(--night3);border:1px solid var(--border);border-radius:10px;padding:8px 10px;">
+          <span style="font-size:12px;font-weight:600;">${r.label}</span>
+          ${days.length > 1 ? `<select id="ov-day-${r.id}" class="form-input" style="width:80px;padding:5px 4px;font-size:11px;">${dayOpts}</select>` : `<input type="hidden" id="ov-day-${r.id}" value="0">`}
+          <input type="time" id="ov-time-${r.id}" value="${r.time}" style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:4px 6px;color:var(--text);font-size:12px;width:80px;">
+          <select id="ov-court-${r.id}" style="background:var(--card);border:1px solid var(--border);border-radius:7px;padding:4px 6px;color:var(--text);font-size:12px;">${courtOpts}</select>
+        </div>`).join('')}
+    </div>`;
+
+  // Set current day selections
+  rows.forEach(r => {
+    const dayEl = document.getElementById('ov-day-'+r.id);
+    if(dayEl) dayEl.value = r.day || 0;
+    const courtEl = document.getElementById('ov-court-'+r.id);
+    if(courtEl) courtEl.value = r.court || 1;
+  });
+}
+
+function saveScheduleOverrides(){
+  const sc = calcSchedule();
+  const cat = getActiveCat();
+  const overrides = {};
+  const allIds = [...cat.matches.map(m=>m.id), 'qf1','qf2','qf3','qf4','sf1','sf2','fin','3rd'];
+  allIds.forEach(id => {
+    const timeEl  = document.getElementById('ov-time-'+id);
+    const courtEl = document.getElementById('ov-court-'+id);
+    const dayEl   = document.getElementById('ov-day-'+id);
+    if(!timeEl) return;
+    const orig = sc.schedule[id] || {};
+    overrides[id] = {
+      time:  timeEl.value  || orig.time  || '09:00',
+      court: parseInt(courtEl ? courtEl.value : (orig.court||1)),
+      day:   parseInt(dayEl ? dayEl.value : (orig.day||0)),
+      dayLabel: getDays()[parseInt(dayEl?dayEl.value:0)]?.label || 'Dia 1',
+      phase: orig.phase || 'grupo'
+    };
+  });
+  state.scheduleOverrides = overrides;
+  saveState('config');
+  closeModals();
+  renderCronograma();
+  showToast('✅ Cronograma ajustado!');
+}
+
+function resetScheduleOverrides(){
+  state.scheduleOverrides = {};
+  saveState('config');
+  closeModals();
+  renderCronograma();
+  showToast('🔄 Cronograma resetado para automático.');
+}
+// ─────────────────────────────────────────────────────────────────────
 function renderAll(){
   renderCategoryTabs();
   renderDuplas();
@@ -2886,6 +3514,7 @@ function renderAll(){
   renderGrupos();
   renderChaveamento();
   renderCronograma();
+  renderRegras();
 }
 
 renderAll();
@@ -2973,6 +3602,100 @@ applyTheme();
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModals()">Cancelar</button>
       <button class="btn btn-primary" onclick="saveNewCategory()">✅ Criar Categoria</button>
+    </div>
+  </div>
+</div>
+
+<!-- RULES EDITOR MODAL -->
+<div class="modal-overlay" id="modal-rules">
+  <div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto;">
+    <h2>✏️ Editar Regras</h2>
+    <div id="rules-editor-content"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModals()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveRules()">💾 Salvar Regras</button>
+    </div>
+  </div>
+</div>
+
+<!-- SCHEDULE OVERRIDE MODAL -->
+<div class="modal-overlay" id="modal-sched-override">
+  <div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto;">
+    <h2>✏️ Ajustar Cronograma</h2>
+    <div id="sched-override-content"></div>
+    <div class="modal-actions" style="flex-wrap:wrap;gap:8px;">
+      <button class="btn btn-secondary" onclick="closeModals()">Cancelar</button>
+      <button class="btn btn-danger btn-sm" onclick="resetScheduleOverrides()">🔄 Resetar</button>
+      <button class="btn btn-primary" onclick="saveScheduleOverrides()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- POOL IMPORT MODAL -->
+<div class="modal-overlay" id="modal-import">
+  <div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto;">
+    <h2>📥 Importar Jogadores para o Pool</h2>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Importe de Excel, cole uma lista ou conecte ao Google Sheets.</p>
+
+    <!-- Import method tabs -->
+    <div style="display:flex;gap:6px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px;">
+      <button class="btn btn-secondary btn-sm" id="imp-tab-excel" onclick="switchImportTab('excel')">📊 Excel</button>
+      <button class="btn btn-secondary btn-sm" id="imp-tab-paste" onclick="switchImportTab('paste')">📋 Colar Lista</button>
+      <button class="btn btn-secondary btn-sm" id="imp-tab-sheets" onclick="switchImportTab('sheets')">🔗 Google Sheets</button>
+    </div>
+
+    <!-- Excel tab -->
+    <div id="imp-pane-excel">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:10px;">Faça upload de um <strong>.xlsx</strong>. O sistema detecta colunas automaticamente.</p>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">📌 Colunas reconhecidas: <code>nome</code>, <code>genero</code> (M/F), <code>categoria</code>, <code>nivel</code></p>
+      <div style="border:2px dashed var(--border);border-radius:12px;padding:28px;text-align:center;cursor:pointer;" onclick="document.getElementById('xlsx-file-input').click()" id="xlsx-drop-zone">
+        <div style="font-size:32px;margin-bottom:8px;">📊</div>
+        <p style="font-size:14px;color:var(--muted);">Clique para selecionar ou arraste o arquivo .xlsx</p>
+        <input type="file" id="xlsx-file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleXlsxUpload(event)">
+      </div>
+      <div id="xlsx-preview" style="margin-top:12px;"></div>
+    </div>
+
+    <!-- Paste tab -->
+    <div id="imp-pane-paste" style="display:none;">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:8px;">Cole os nomes abaixo — um por linha. Use <code>;</code> para separar nome e gênero. Ex: <code>João Silva;M;Misto</code></p>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">Formato: <code>Nome;Gênero(M/F);Categoria(opcional)</code></p>
+      <textarea class="rules-textarea" id="paste-input" style="min-height:160px;" placeholder="João Silva;M;Misto&#10;Ana Costa;F;Misto&#10;Carlos Lima;M;Masculino&#10;..."></textarea>
+      <button class="btn btn-secondary btn-sm" onclick="parsePasteInput()" style="margin-top:8px;width:100%">🔍 Analisar</button>
+      <div id="paste-preview" style="margin-top:10px;"></div>
+    </div>
+
+    <!-- Google Sheets tab -->
+    <div id="imp-pane-sheets" style="display:none;">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:10px;">Cole a URL de um Google Sheet <strong>público</strong> (Arquivo → Compartilhar → Qualquer pessoa com o link pode ver).</p>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">💡 Funciona também com respostas do Google Forms exportadas para Sheets.</p>
+      <div class="form-group">
+        <label>URL do Google Sheets</label>
+        <input class="form-input" id="sheets-url" type="url" placeholder="https://docs.google.com/spreadsheets/d/...">
+      </div>
+      <button class="btn btn-secondary" onclick="fetchGoogleSheets()" style="width:100%">🔗 Buscar Planilha</button>
+      <div id="sheets-preview" style="margin-top:12px;"></div>
+    </div>
+
+    <!-- Auto-distribute option -->
+    <div id="import-distribute-opt" style="display:none;margin-top:16px;padding:14px;background:rgba(43,191,176,.06);border:1px solid rgba(43,191,176,.2);border-radius:12px;">
+      <p style="font-size:13px;font-weight:600;color:var(--teal);margin-bottom:10px;">🏅 Distribuição por Categoria</p>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">Os dados importados têm uma coluna <strong>Categoria</strong>. Como distribuir?</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+          <input type="radio" name="dist-mode" value="auto" checked> Criar/usar categorias automaticamente
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+          <input type="radio" name="dist-mode" value="pool_only"> Só adicionar ao pool atual
+        </label>
+      </div>
+    </div>
+
+    <div id="import-parsed-data" style="display:none;"></div>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModals()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-confirm-import" style="display:none;" onclick="confirmImport()">✅ Importar</button>
     </div>
   </div>
 </div>
