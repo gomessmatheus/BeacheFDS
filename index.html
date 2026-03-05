@@ -885,9 +885,9 @@ function setActiveCategory(id){
   renderCategoryTabs();
 }
 
-function addCategory(name, teamMode){
+function addCategory(name, teamMode, classe){
   if(!state.categories) state.categories = [];
-  const cat = buildFreshCategory(name, teamMode);
+  const cat = buildFreshCategory(name, teamMode, undefined, classe);
   state.categories.push(cat);
   state.activeCatId = cat.id;
   saveState('categories');
@@ -935,24 +935,47 @@ function renderCategoryTabs(){
   wrap.style.display = 'flex';
   wrap.innerHTML = cats.map(c => `
     <button class="cat-tab ${c.id === activeId ? 'active' : ''}" onclick="setActiveCategory('${c.id}')">
-      ${c.name}
+      ${c.name}${c.classe ? ` <span style="font-size:10px;opacity:.7;">${c.classe}</span>` : ''}
     </button>
   `).join('') + (currentRole === 'admin' ? `
     <button class="cat-tab cat-add" onclick="openNewCategoryModal()">+ Nova</button>
   ` : '');
 }
 
+const TEAMMODE_SHORT = {
+  misto:'Misto', masculino:'Masculino', feminino:'Feminino',
+  dupla_m:'Dupla Masc', dupla_f:'Dupla Fem',
+  individual_m:'Individual Masc', individual_f:'Individual Fem'
+};
+
+function buildCategoryName(teamMode, classe){
+  const base = TEAMMODE_SHORT[teamMode] || teamMode;
+  return classe ? base + ' ' + classe : base;
+}
+
+function updateNewCatPreview(){
+  const tm  = (document.getElementById('newcat-teammode')||{}).value || 'misto';
+  const cls = (document.getElementById('newcat-classe')||{}).value || '';
+  const name = buildCategoryName(tm, cls);
+  const preview = document.getElementById('newcat-preview');
+  if(preview) preview.textContent = name;
+  const hidden = document.getElementById('newcat-name');
+  if(hidden) hidden.value = name;
+}
+
 function openNewCategoryModal(){
   document.getElementById('modal-newcat').classList.add('open');
-  document.getElementById('newcat-name').value = '';
   document.getElementById('newcat-teammode').value = 'misto';
+  const classeEl = document.getElementById('newcat-classe');
+  if(classeEl) classeEl.value = '';
+  updateNewCatPreview();
 }
 
 function saveNewCategory(){
-  const name = document.getElementById('newcat-name').value.trim();
   const teamMode = document.getElementById('newcat-teammode').value;
-  if(!name){ showToast('⚠️ Digite um nome para a categoria.'); return; }
-  addCategory(name, teamMode);
+  const classe   = document.getElementById('newcat-classe').value;
+  const name     = buildCategoryName(teamMode, classe);
+  addCategory(name, teamMode, classe);
   closeModals();
 }
 // ─────────────────────────────────────────────────────────────────────
@@ -1096,6 +1119,7 @@ function migrateState(s){
       cat.knockoutMatches = buildKnockoutMatches(cat.groups.groups.length);
     if(!cat.teamMode) cat.teamMode = 'misto';
     if(!cat.name)     cat.name     = 'Categoria';
+    if(!cat.classe)   cat.classe   = '';
     if(!cat.id)       cat.id       = 'cat_' + Date.now();
   });
   if(!s.activeCatId || !s.categories.find(c=>c.id===s.activeCatId))
@@ -1232,7 +1256,7 @@ function syncKnockoutTeams(){
 
 // ── CATEGORY SYSTEM ──────────────────────────────────────────────────
 // Each category has its own pool, duplas, groups, matches, knockoutMatches
-function buildFreshCategory(name, teamMode, id){
+function buildFreshCategory(name, teamMode, id, classe){
   id = id || ('cat_' + Date.now());
   const duplas = [];
   const groups = buildGroups(duplas);
@@ -1241,6 +1265,7 @@ function buildFreshCategory(name, teamMode, id){
     id,
     name: name || 'Categoria',
     teamMode: teamMode || 'misto',
+    classe: classe || '',
     duplas,
     groups,
     matches: buildMatches(groups),
@@ -2763,7 +2788,7 @@ function openConfigModal(){
       : cats.map(c => `
         <div style="display:flex;align-items:center;gap:8px;background:var(--night3);border:1px solid var(--border);border-radius:10px;padding:8px 12px;">
           <span style="flex:1;font-size:13px;font-weight:600;">${c.name}</span>
-          <span style="font-size:11px;color:var(--muted);">${(TEAM_MODE_LABELS[c.teamMode]||{}).label||c.teamMode}</span>
+          <span style="font-size:11px;color:var(--muted);">${(TEAM_MODE_LABELS[c.teamMode]||{}).label||c.teamMode}${c.classe?' · '+c.classe:''}</span>
           ${cats.length > 1 ? `<button class="icon-btn del" onclick="deleteCategory('${c.id}')" title="Excluir">🗑️</button>` : ''}
         </div>`).join('');
   }
@@ -3416,7 +3441,7 @@ function importWithAutoDistribute(players){
       let teamMode = 'misto';
       if(nm.includes('masc') || nm==='m') teamMode = 'masculino';
       else if(nm.includes('fem') || nm==='f') teamMode = 'feminino';
-      addCategory(catName, teamMode);
+      addCategory(catName, teamMode, '');
       tourCat = state.categories[state.categories.length-1];
     }
     if(!tourCat.pool) tourCat.pool = {homens:[], mulheres:[]};
@@ -3723,23 +3748,38 @@ applyTheme();
 <div class="modal-overlay" id="modal-newcat">
   <div class="modal" style="max-width:380px;">
     <h2>➕ Nova Categoria</h2>
-    <p style="color:var(--muted);font-size:13px;margin-bottom:20px;">Cada categoria tem pool, grupos e chaveamento independentes.</p>
-    <div class="form-group">
-      <label>Nome da Categoria</label>
-      <input class="form-input" id="newcat-name" type="text" placeholder="Ex: Masculino A, Misto Open..." onkeydown="if(event.key==='Enter')saveNewCategory()">
-    </div>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:20px;">O nome é gerado automaticamente pela modalidade + classe.</p>
     <div class="form-group">
       <label>Modalidade</label>
-      <select class="form-input" id="newcat-teammode">
-        <option value="misto">👫 Duplas Mistas</option>
+      <select class="form-input" id="newcat-teammode" onchange="updateNewCatPreview()">
+        <option value="misto">👫 Misto</option>
         <option value="masculino">👨 Masculino</option>
         <option value="feminino">👩 Feminino</option>
-        <option value="dupla_m">👬 Duplas Masculinas</option>
-        <option value="dupla_f">👭 Duplas Femininas</option>
+        <option value="dupla_m">👬 Dupla Masculina</option>
+        <option value="dupla_f">👭 Dupla Feminina</option>
         <option value="individual_m">🧍 Individual Masculino</option>
         <option value="individual_f">🧍 Individual Feminino</option>
       </select>
     </div>
+    <div class="form-group">
+      <label>🏅 Classe</label>
+      <select class="form-input" id="newcat-classe" onchange="updateNewCatPreview()">
+        <option value="">— Sem classe —</option>
+        <option value="A">A</option>
+        <option value="B">B</option>
+        <option value="C">C</option>
+        <option value="D">D</option>
+        <option value="Iniciante">Iniciante</option>
+        <option value="Intermediário">Intermediário</option>
+        <option value="Open">Open</option>
+        <option value="Pro">Pro</option>
+      </select>
+    </div>
+    <div style="background:rgba(43,191,176,.08);border:1px solid rgba(43,191,176,.2);border-radius:10px;padding:12px 16px;margin-bottom:4px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:12px;color:var(--muted);">Nome:</span>
+      <span id="newcat-preview" style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--teal);letter-spacing:1px;">Misto</span>
+    </div>
+    <input type="hidden" id="newcat-name" value="Misto">
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModals()">Cancelar</button>
       <button class="btn btn-primary" onclick="saveNewCategory()">✅ Criar Categoria</button>
