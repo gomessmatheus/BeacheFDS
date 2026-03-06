@@ -981,7 +981,7 @@ function renderCategoryTabs(){
   const cats = state.categories || [];
   const activeId = state.activeCatId;
 
-  if(cats.length === 0){
+  if(cats.length <= 1){
     wrap.innerHTML = '';
     wrap.style.display = 'none';
     return;
@@ -1529,15 +1529,37 @@ function initFirebase(cfg, statusEl){
         renderAll();
       });
     }).catch(e => {
-      // Fallback: just listen
-      fbRef.on('value', snap => {
-        const remote = snap.val();
-        if(!remote) return;
-        if((remote._lastWriteAt||0) <= (state._lastWriteAt||0)) return;
-        state = migrateState(remote);
-        localStorage.setItem('bt2_state', JSON.stringify(state));
-        renderAll();
-      });
+      const msg = e.message || '';
+      if(msg.includes('PERMISSION_DENIED') || msg.includes('permission')){
+        setFirebaseStatus(false);
+        showToast('🔒 Firebase: Permissão negada. Abra o 🔥 Offline e siga as instruções de regras.');
+        const statusEl2 = document.getElementById('firebase-connect-status');
+        if(statusEl2) showFirebaseRulesHelp(statusEl2);
+      } else {
+        // Fallback: keep listening anyway
+        fbRef.on('value', snap => {
+          const remote = snap.val();
+          if(!remote) return;
+          if((remote._lastWriteAt||0) <= (state._lastWriteAt||0)) return;
+          state = migrateState(remote);
+          localStorage.setItem('bt2_state', JSON.stringify(state));
+          renderAll();
+        });
+      }
+    });
+
+    // Test write to detect PERMISSION_DENIED early
+    db.ref('.info/connected').once('value').then(snap => {
+      if(snap.val() === true){
+        fbRef.child('_ping').set(Date.now()).catch(e => {
+          if((e.message||'').toLowerCase().includes('permission')){
+            setFirebaseStatus(false);
+            showToast('🔒 Firebase sem permissão de escrita. Veja as Regras do banco.');
+            const sEl = document.getElementById('firebase-connect-status');
+            if(sEl) showFirebaseRulesHelp(sEl);
+          }
+        });
+      }
     });
 
     showToast('🔥 Firebase conectado! Tudo sincronizado em tempo real.');
@@ -1549,6 +1571,23 @@ function initFirebase(cfg, statusEl){
   }
 }
 
+function showFirebaseRulesHelp(el){
+  el.innerHTML = `
+    <div style="background:rgba(240,180,41,.08);border:1px solid rgba(240,180,41,.25);border-radius:10px;padding:12px 14px;font-size:12px;line-height:1.8;margin-top:8px;">
+      🔒 <strong style="color:var(--gold)">Permissão negada.</strong> Corrija as Regras do banco:<br>
+      1. Acesse <a href="https://console.firebase.google.com" target="_blank" style="color:var(--teal)">console.firebase.google.com</a><br>
+      2. Selecione seu projeto → <strong>Realtime Database</strong> → aba <strong>Regras</strong><br>
+      3. Substitua o conteúdo por:<br>
+      <code style="display:block;background:var(--night3);border-radius:6px;padding:8px;margin:6px 0;font-size:11px;white-space:pre;">{
+  "rules": {
+    ".read": true,
+    ".write": true
+  }
+}</code>
+      4. Clique em <strong>Publicar</strong> e recarregue esta página.
+    </div>`;
+}
+
 function openFirebaseModal(){
   const cfg = loadFirebaseConfig();
   const textarea = document.getElementById('firebase-config-input');
@@ -1558,8 +1597,17 @@ function openFirebaseModal(){
   else textarea.value = '';
   const connected = fbRef !== null;
   discBtn.style.display = connected ? 'inline-flex' : 'none';
-  statusEl.textContent = connected ? '✅ Conectado ao Firebase' : '';
-  statusEl.style.color = connected ? 'var(--success)' : '';
+  if(connected){
+    statusEl.innerHTML = '✅ Conectado ao Firebase';
+    statusEl.style.color = 'var(--success)';
+  } else if(cfg){
+    // Config exists but not connected — likely rules issue
+    statusEl.innerHTML = '⚠️ Config encontrada mas não conectado.';
+    statusEl.style.color = 'var(--gold)';
+    showFirebaseRulesHelp(statusEl);
+  } else {
+    statusEl.innerHTML = '';
+  }
   document.getElementById('modal-firebase').classList.add('open');
 }
 
