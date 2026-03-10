@@ -538,31 +538,31 @@ body.tiebreak-active .score-live{color:var(--gold);}
 <!-- MODALS -->
 <div class="modal-overlay" id="modal-dupla">
   <div class="modal">
-    <h2 id="modal-dupla-title">➕ Nova Dupla</h2>
-    <p id="modal-dupla-sub" style="color:var(--muted);font-size:13px;margin-bottom:16px;"></p>
+    <h2 id="modal-dupla-title" style="text-transform:uppercase;letter-spacing:1px;">Cadastrar Dupla</h2>
+    <p id="modal-dupla-sub" style="color:var(--muted);font-size:12px;margin-bottom:16px;text-transform:uppercase;letter-spacing:.5px;"></p>
     <input type="hidden" id="modal-dupla-idx" value="-1">
     <div class="form-group">
-      <label id="md-m-label">👤 Jogador 1</label>
+      <label id="md-m-label" style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;">Jogador</label>
       <select class="form-input" id="md-m">
         <option value="">— Selecione —</option>
       </select>
       <p id="md-m-empty" style="display:none;font-size:12px;color:var(--gold);margin-top:6px;">
-        ⚠️ Nenhum jogador no pool. <a href="#" onclick="closeModals();showSection('pool',document.querySelector('.nav-btn[onclick*=pool]'));return false;" style="color:var(--teal);">Adicionar ao pool →</a>
+        Nenhum jogador no pool. <a href="#" onclick="closeModals();showSection('pool',document.querySelector('.nav-btn[onclick*=pool]'));return false;" style="color:var(--teal);">Adicionar ao pool →</a>
       </p>
     </div>
     <div class="form-group" id="md-f-wrap">
-      <label id="md-f-label">👤 Jogador 2</label>
+      <label id="md-f-label" style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;">Jogador 2</label>
       <select class="form-input" id="md-f">
         <option value="">— Selecione —</option>
       </select>
       <p id="md-f-empty" style="display:none;font-size:12px;color:var(--gold);margin-top:6px;">
-        ⚠️ Nenhuma jogadora no pool. <a href="#" onclick="closeModals();showSection('pool',document.querySelector('.nav-btn[onclick*=pool]'));return false;" style="color:var(--teal);">Adicionar ao pool →</a>
+        Nenhum jogador no pool. <a href="#" onclick="closeModals();showSection('pool',document.querySelector('.nav-btn[onclick*=pool]'));return false;" style="color:var(--teal);">Adicionar ao pool →</a>
       </p>
     </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModals()">Cancelar</button>
-      <button class="btn btn-secondary" onclick="saveDuplaPending()" id="btn-save-pending" style="display:none">💾 Salvar só P1</button>
-      <button class="btn btn-primary" onclick="saveDupla()">💾 Salvar Dupla</button>
+      <button class="btn btn-secondary" onclick="saveDuplaPending()" id="btn-save-pending" style="display:none">Salvar só P1</button>
+      <button class="btn btn-primary" onclick="saveDupla()">Salvar Dupla</button>
     </div>
   </div>
 </div>
@@ -604,7 +604,7 @@ body.tiebreak-active .score-live{color:var(--gold);}
     <p>Esporte, formato e horários.</p>
 
     <div style="background:rgba(43,191,176,.06);border:1px solid rgba(43,191,176,.2);border-radius:12px;padding:14px 16px;margin-bottom:16px;">
-      <p style="font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:12px;">🏅 Esporte e Formato</p>
+      <p style="font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:12px;">Esporte e Formato</p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div class="form-group">
           <label>Esporte</label>
@@ -620,7 +620,7 @@ body.tiebreak-active .score-live{color:var(--gold);}
         <div class="form-group">
           <label>Modalidade</label>
           <select class="form-input" id="cfg-team-mode">
-            <option value="misto">👫 Duplas Mistas</option>
+            <option value="misto">Duplas Mistas</option>
           </select>
         </div>
         <div class="form-group">
@@ -689,7 +689,7 @@ body.tiebreak-active .score-live{color:var(--gold);}
       <button class="btn btn-secondary" onclick="closeModals()">Cancelar</button>
       <button class="btn btn-primary" onclick="saveConfig()">💾 Salvar</button>
     <div class="admin-only" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
-      <p style="font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:10px;">🏅 Categorias do Torneio</p>
+      <p style="font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:10px;">Categorias do Torneio</p>
       <div id="cfg-categories-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;"></div>
       <button class="btn btn-secondary btn-sm" onclick="openNewCategoryModal()" style="width:100%">➕ Adicionar Categoria</button>
     </div>
@@ -892,28 +892,28 @@ const TEAM_MODE_LABELS = {
   // hasP2: does this mode have a second player per entry?
   // poolMode: 'two_gender'|'one_col_m'|'one_col_f' — how pool is displayed
   misto:        { label:'Duplas Mistas', icon:'👫', hasFemale:true,
-                  p1label:'Jogador', p1icon:'👨', p2label:'Jogadora', p2icon:'👩',
+                  p1label:'Jogador',   p1icon:'', p2label:'Jogadora',  p2icon:'',
                   hasP2:true, poolMode:'two_gender' },
   masculino:    { label:'Masculino',     icon:'👨', hasFemale:false,
-                  p1label:'Jogador 1',  p1icon:'👤', p2label:'Jogador 2', p2icon:'👤',
+                  p1label:'Jogador 1',  p1icon:'', p2label:'Jogador 2', p2icon:'',
                   hasP2:true, poolMode:'one_col_m' },
   feminino:     { label:'Feminino',      icon:'👩', hasFemale:false,
-                  p1label:'Jogadora 1', p1icon:'👤', p2label:'Jogadora 2', p2icon:'👤',
+                  p1label:'Jogadora 1', p1icon:'', p2label:'Jogadora 2',p2icon:'',
                   hasP2:true, poolMode:'one_col_f' },
   dupla_m:      { label:'Duplas Masc.', icon:'👬', hasFemale:false,
-                  p1label:'Jogador 1',  p1icon:'👤', p2label:'Jogador 2', p2icon:'👤',
+                  p1label:'Jogador 1',  p1icon:'', p2label:'Jogador 2', p2icon:'',
                   hasP2:true, poolMode:'one_col_m' },
   dupla_f:      { label:'Duplas Fem.',  icon:'👭', hasFemale:false,
-                  p1label:'Jogadora 1', p1icon:'👤', p2label:'Jogadora 2', p2icon:'👤',
+                  p1label:'Jogadora 1', p1icon:'', p2label:'Jogadora 2',p2icon:'',
                   hasP2:true, poolMode:'one_col_f' },
   dupla_mista:  { label:'Duplas Mistas',icon:'👫', hasFemale:true,
-                  p1label:'Jogador', p1icon:'👨', p2label:'Jogadora', p2icon:'👩',
+                  p1label:'Jogador',   p1icon:'', p2label:'Jogadora',  p2icon:'',
                   hasP2:true, poolMode:'two_gender' },
-  individual_m: { label:'Individual M', icon:'🧍', hasFemale:false,
-                  p1label:'Jogador',    p1icon:'👤', p2label:'', p2icon:'',
+  individual_m: { label:'Individual',   icon:'🧍', hasFemale:false,
+                  p1label:'Nome',      p1icon:'', p2label:'',          p2icon:'',
                   hasP2:false, poolMode:'one_col_m' },
-  individual_f: { label:'Individual F', icon:'🧍', hasFemale:false,
-                  p1label:'Jogadora',   p1icon:'👤', p2label:'', p2icon:'',
+  individual_f: { label:'Individual',   icon:'🧍', hasFemale:false,
+                  p1label:'Nome',      p1icon:'', p2label:'',          p2icon:'',
                   hasP2:false, poolMode:'one_col_f' },
 };
 
@@ -1107,6 +1107,7 @@ function updateNewCatPreview(){
 function openNewCategoryModal(){
   document.getElementById('modal-newcat').classList.add('open');
   document.getElementById('newcat-teammode').value = 'misto';
+  document.getElementById('newcat-classe').value = '';
   const classeEl = document.getElementById('newcat-classe');
   if(classeEl) classeEl.value = '';
   updateNewCatPreview();
@@ -1766,11 +1767,11 @@ function openDuplaModal(idx){
   const pool = cat.pool || {homens:[], mulheres:[]};
 
   document.getElementById('modal-dupla-idx').value = isEdit ? idx : -1;
-  document.getElementById('modal-dupla-title').textContent = isEdit ? '✏️ Editar Dupla '+(idx+1) : '➕ Nova Dupla';
-  document.getElementById('modal-dupla-sub').textContent = mi.label + (mi.hasP2 ? ' — selecione os dois jogadores do pool' : ' — selecione o jogador do pool');
+  document.getElementById('modal-dupla-title').textContent = isEdit ? 'Editar Dupla '+(idx+1) : 'Cadastrar Dupla';
+  document.getElementById('modal-dupla-sub').textContent = mi.label;
 
   // P1 — from homens (or homens for single-gender)
-  document.getElementById('md-m-label').textContent = mi.p1icon + ' ' + mi.p1label;
+  document.getElementById('md-m-label').textContent = mi.p1label.toUpperCase();
   buildPoolSelect(
     document.getElementById('md-m'),
     document.getElementById('md-m-empty'),
@@ -1782,7 +1783,7 @@ function openDuplaModal(idx){
   const p2wrap = document.getElementById('md-f-wrap');
   if(mi.hasP2){
     p2wrap.style.display = '';
-    document.getElementById('md-f-label').textContent = mi.p2icon + ' ' + mi.p2label;
+    document.getElementById('md-f-label').textContent = mi.p2label.toUpperCase();
     // two_gender = mulheres; single = homens
     const p2pool = mi.poolMode === 'two_gender' ? pool.mulheres : pool.homens;
     buildPoolSelect(
@@ -3611,10 +3612,12 @@ function openAddPreformedDupla(editIdx){
   document.getElementById('pf-idx').value = editIdx !== undefined ? editIdx : -1;
   // Populate category selector
   const catSel = document.getElementById('pf-cat');
-  if(catSel) catSel.innerHTML = cats.map(c => `<option value="${c.id}" ${c.id===getActiveCat().id?'selected':''}>${c.name}</option>`).join('');
+  if(catSel) catSel.innerHTML = cats.map(c => `<option value="${c.id}" ${c.id===getActiveCat().id?'selected':''}>${c.name}${!c.classe?' (sem classe)':''}</option>`).join('');
   // Labels
   const mi2 = getCatModeInfo();
-  document.getElementById('pf-p1-label').textContent = mi2.p1icon + ' ' + mi2.p1label;
+  document.getElementById('pf-p1-label').textContent = mi2.p1label.toUpperCase();
+  const p2lbl = document.getElementById('pf-p2-label');
+  if(p2lbl) p2lbl.textContent = mi2.p2label.toUpperCase();
   const p2wrap = document.getElementById('pf-p2-wrap');
   if(p2wrap) p2wrap.style.display = mi2.hasP2 ? '' : 'none';
   // Fill values if editing
@@ -3626,7 +3629,7 @@ function openAddPreformedDupla(editIdx){
     document.getElementById('pf-p1').value = '';
     document.getElementById('pf-p2').value = '';
   }
-  document.getElementById('pf-modal-title').textContent = editIdx >= 0 ? '✏️ Editar Dupla' : '➕ Cadastrar Dupla';
+  document.getElementById('pf-modal-title').textContent = editIdx >= 0 ? 'Editar Dupla' : 'Cadastrar Dupla';
   modal.classList.add('open');
   setTimeout(() => document.getElementById('pf-p1').focus(), 80);
 }
@@ -3727,10 +3730,10 @@ function detectColumns(headers){
     if(map.gender2===undefined && (n==='generodoparceiroa'||n==='generoparceiroa'||['genero2','gender2','sexo2','genderparceiro'].includes(n))) map.gender2 = i;
     // modalidade / categoria
     if(map.cat===undefined     && ['categoria','category','cat','modalidade','tipo','modality'].includes(n)) map.cat = i;
-    // classe (separada de nível)
-    if(map.classe===undefined  && ['classe','class','classejogo'].includes(n)) map.classe = i;
-    // nível
-    if(map.nivel===undefined   && ['nivel','nível','level','rank','ranking'].includes(n)) map.nivel = i;
+    // classe (separada de nível) — check BEFORE nivel so 'classe' column maps here, not nivel
+    if(map.classe===undefined  && ['classe','class','classejogo','classecompetitiva'].includes(n)) map.classe = i;
+    // nível — only if not already mapped as classe
+    if(map.nivel===undefined   && n!=='classe' && ['nivel','nível','level','rank','ranking'].includes(n)) map.nivel = i;
     // whatsapp
     if(map.phone===undefined   && ['whatsapp','contato','telefone','phone','celular','fone'].includes(n)) map.phone = i;
     // timestamp do forms — ignorar
@@ -3874,7 +3877,9 @@ async function aiLinkDuplas(){
   const statusEl = document.getElementById('ai-link-status');
 
   try {
-    const prompt = `Você é um assistente de torneio de beach tennis. Analise a lista de inscrições abaixo e identifique as duplas.
+    const prompt = `Você é um assistente de torneio de beach tennis. Analise as inscrições e identifique as duplas.
+
+ATENÇÃO: Use os nomes EXATOS como aparecem em "nome" para o resultado final. Para o campo "_pair" (parceiro declarado), o nome pode estar incompleto ou com erro de digitação — faça correspondência fuzzy com os nomes reais da lista.
 
 Regras:
 - Cada jogador pode ter um "parceiro_declarado" (nome digitado livremente — pode ter erros de digitação ou nome incompleto)
@@ -3967,7 +3972,9 @@ function confirmAiLinkedImport(){
 
   // Build import payload: use AI duplas + add solo players from _importParsed
   const linkedNames = new Set(_aiLinkedDuplas.flatMap(d => [d.p1, d.p2]));
-  const soloPlayers = _importParsed.filter(p => !linkedNames.has(p.name));
+  // Exclude placeholders that are already covered by AI-identified duplas
+  // Also exclude placeholders — they're either linked by AI or we don't know their real name
+  const soloPlayers = _importParsed.filter(p => !linkedNames.has(p.name) && !p._placeholder);
 
   // Create/find categories and add duplas
   const catMap = {}; // catName → tourCat
@@ -3979,10 +3986,11 @@ function confirmAiLinkedImport(){
     if(!tourCat){
       const nm = catName.toLowerCase();
       let teamMode = 'misto';
-      if(nm.includes('masc')) teamMode = 'masculino';
-      else if(nm.includes('fem')) teamMode = 'feminino';
+      if(nm.includes('dupla mist')||nm.includes('misto')) teamMode = 'dupla_mista';
       else if(nm.includes('dupla masc')) teamMode = 'dupla_m';
-      else if(nm.includes('dupla fem')) teamMode = 'dupla_f';
+      else if(nm.includes('dupla fem'))  teamMode = 'dupla_f';
+      else if(nm.includes('masc'))       teamMode = 'masculino';
+      else if(nm.includes('fem'))        teamMode = 'feminino';
       const detectedClasse = KNOWN_CLASSES.find(cl => catName.toLowerCase().includes(cl.toLowerCase())) || '';
       addCategory(catName, teamMode, detectedClasse);
       tourCat = state.categories[state.categories.length-1];
@@ -4072,7 +4080,7 @@ function openLinkPartnerModal(idx){
   // Reuse dupla modal but focus on P2 only
   openDuplaModal(idx);
   // Mark that we're linking partner
-  document.getElementById('modal-dupla-title').textContent = '🔗 Vincular Parceiro(a)';
+  document.getElementById('modal-dupla-title').textContent = 'Vincular Parceiro';
   document.getElementById('modal-dupla-sub').textContent = 'Selecione o(a) parceiro(a) para completar a dupla.';
   // Disable P1 select
   const p1sel = document.getElementById('md-m');
@@ -4644,22 +4652,22 @@ applyTheme();
 <!-- NEW CATEGORY MODAL -->
 <div class="modal-overlay" id="modal-newcat">
   <div class="modal" style="max-width:380px;">
-    <h2>➕ Nova Categoria</h2>
+    <h2 style="text-transform:uppercase;letter-spacing:1px;">Nova Categoria</h2>
     <p style="color:var(--muted);font-size:13px;margin-bottom:20px;">O nome é gerado automaticamente pela modalidade + classe.</p>
     <div class="form-group">
       <label>Modalidade</label>
       <select class="form-input" id="newcat-teammode" onchange="updateNewCatPreview()">
-        <option value="misto">👫 Misto</option>
-        <option value="masculino">👨 Masculino</option>
-        <option value="feminino">👩 Feminino</option>
-        <option value="dupla_m">👬 Dupla Masculina</option>
-        <option value="dupla_f">👭 Dupla Feminina</option>
-        <option value="individual_m">🧍 Individual Masculino</option>
-        <option value="individual_f">🧍 Individual Feminino</option>
+        <option value="misto">Misto</option>
+        <option value="masculino">Masculino</option>
+        <option value="feminino">Feminino</option>
+        <option value="dupla_m">Dupla Masculina</option>
+        <option value="dupla_f">Dupla Feminina</option>
+        <option value="individual_m">Individual Masculino</option>
+        <option value="individual_f">Individual Feminino</option>
       </select>
     </div>
     <div class="form-group">
-      <label>🏅 Classe</label>
+      <label>Classe</label>
       <select class="form-input" id="newcat-classe" onchange="updateNewCatPreview()">
         <option value="" disabled selected>Selecione a classe...</option>
         <option value="A">A</option>
@@ -4674,12 +4682,12 @@ applyTheme();
     </div>
     <div style="background:rgba(43,191,176,.08);border:1px solid rgba(43,191,176,.2);border-radius:10px;padding:12px 16px;margin-bottom:4px;display:flex;align-items:center;gap:10px;">
       <span style="font-size:12px;color:var(--muted);">Nome:</span>
-      <span id="newcat-preview" style="font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--teal);letter-spacing:1px;">Misto</span>
+      <span id="newcat-preview" style="font-family:'Bebas Neue',sans-serif;font-size:13px;color:var(--muted);letter-spacing:.5px;">← selecione a classe</span>
     </div>
-    <input type="hidden" id="newcat-name" value="Misto">
+    <input type="hidden" id="newcat-name" value="">
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModals()">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveNewCategory()">✅ Criar Categoria</button>
+      <button class="btn btn-primary" onclick="saveNewCategory()">Criar Categoria</button>
     </div>
   </div>
 </div>
@@ -4687,7 +4695,7 @@ applyTheme();
 <!-- RULES EDITOR MODAL -->
 <div class="modal-overlay" id="modal-rules">
   <div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto;">
-    <h2>✏️ Editar Regras</h2>
+    <h2 style="text-transform:uppercase;letter-spacing:1px;">Editar Regras</h2>
     <div id="rules-editor-content"></div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModals()">Cancelar</button>
@@ -4759,7 +4767,7 @@ applyTheme();
 
     <!-- Auto-distribute option -->
     <div id="import-distribute-opt" style="display:none;margin-top:16px;padding:14px;background:rgba(43,191,176,.06);border:1px solid rgba(43,191,176,.2);border-radius:12px;">
-      <p style="font-size:13px;font-weight:600;color:var(--teal);margin-bottom:10px;">🏅 Distribuição por Categoria</p>
+      <p style="font-size:13px;font-weight:600;color:var(--teal);margin-bottom:10px;">Distribuição por Categoria</p>
       <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">Os dados importados têm uma coluna <strong>Categoria</strong>. Como distribuir?</p>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
@@ -4783,25 +4791,25 @@ applyTheme();
 <!-- PRE-FORMED DUPLA MODAL -->
 <div class="modal-overlay" id="modal-preformed-dupla">
   <div class="modal" style="max-width:400px;">
-    <h2 id="pf-modal-title">➕ Cadastrar Dupla</h2>
+    <h2 id="pf-modal-title" style="text-transform:uppercase;letter-spacing:1px;">Cadastrar Dupla</h2>
     <input type="hidden" id="pf-idx" value="-1">
     <div class="form-group">
-      <label id="pf-p1-label">👤 Jogador 1</label>
+      <label id="pf-p1-label" style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;">Jogador 1</label>
       <input class="form-input" id="pf-p1" type="text" placeholder="Nome completo"
              onkeydown="if(event.key==='Enter') document.getElementById('pf-p2').focus()">
     </div>
     <div class="form-group" id="pf-p2-wrap">
-      <label>👩 Jogador 2</label>
+      <label id="pf-p2-label" style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;">Jogador 2</label>
       <input class="form-input" id="pf-p2" type="text" placeholder="Nome completo"
              onkeydown="if(event.key==='Enter') savePreformedDupla()">
     </div>
     <div class="form-group">
-      <label>🏅 Categoria</label>
+      <label style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;">Categoria</label>
       <select class="form-input" id="pf-cat"></select>
     </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModals()">Cancelar</button>
-      <button class="btn btn-primary" onclick="savePreformedDupla()">💾 Salvar Dupla</button>
+      <button class="btn btn-primary" onclick="savePreformedDupla()">Salvar Dupla</button>
     </div>
   </div>
 </div>
