@@ -1080,9 +1080,15 @@ function buildCategoryName(teamMode, classe){
 function updateNewCatPreview(){
   const tm  = (document.getElementById('newcat-teammode')||{}).value || 'misto';
   const cls = (document.getElementById('newcat-classe')||{}).value || '';
-  const name = buildCategoryName(tm, cls);
   const preview = document.getElementById('newcat-preview');
-  if(preview) preview.textContent = name;
+  if(!cls){
+    if(preview){ preview.textContent = '— selecione a classe →'; preview.style.color = 'var(--muted)'; preview.style.fontSize = '13px'; }
+    const hidden = document.getElementById('newcat-name');
+    if(hidden) hidden.value = '';
+    return;
+  }
+  const name = buildCategoryName(tm, cls);
+  if(preview){ preview.textContent = name; preview.style.color = 'var(--teal)'; preview.style.fontSize = '18px'; }
   const hidden = document.getElementById('newcat-name');
   if(hidden) hidden.value = name;
 }
@@ -1098,7 +1104,12 @@ function openNewCategoryModal(){
 function saveNewCategory(){
   const teamMode = document.getElementById('newcat-teammode').value;
   const classe   = document.getElementById('newcat-classe').value;
-  const name     = buildCategoryName(teamMode, classe);
+  if(!classe){
+    showToast('⚠️ Selecione uma classe para a categoria!');
+    document.getElementById('newcat-classe').focus();
+    return;
+  }
+  const name = buildCategoryName(teamMode, classe);
   addCategory(name, teamMode, classe);
   closeModals();
 }
@@ -1772,6 +1783,11 @@ function openDuplaModal(idx){
 
 function saveDupla(){
   const mi  = getCatModeInfo();
+  const cat = getActiveCat();
+  if(!cat.classe){
+    showToast('⚠️ Esta categoria não tem classe definida. Edite a categoria primeiro.');
+    return;
+  }
   const idx = parseInt(document.getElementById('modal-dupla-idx').value);
   const m   = document.getElementById('md-m').value.trim();
   const f   = mi.hasP2 ? document.getElementById('md-f').value.trim() : '';
@@ -3986,7 +4002,10 @@ function importWithAutoDistribute(players){
       let teamMode = 'misto';
       if(nm.includes('masc') || nm==='m') teamMode = 'masculino';
       else if(nm.includes('fem') || nm==='f') teamMode = 'feminino';
-      addCategory(catName, teamMode, '');
+      // Try to extract classe from catName (e.g. "Misto Iniciante" → "Iniciante")
+      const KNOWN_CLASSES = ['A','B','C','D','Iniciante','Intermediário','Open','Pro'];
+      const detectedClasse = KNOWN_CLASSES.find(cl => catName.toLowerCase().includes(cl.toLowerCase())) || '';
+      addCategory(catName, teamMode, detectedClasse);
       tourCat = state.categories[state.categories.length-1];
     }
     if(!tourCat.pool) tourCat.pool = {homens:[], mulheres:[]};
@@ -4309,7 +4328,7 @@ applyTheme();
     <div class="form-group">
       <label>🏅 Classe</label>
       <select class="form-input" id="newcat-classe" onchange="updateNewCatPreview()">
-        <option value="">— Sem classe —</option>
+        <option value="" disabled selected>Selecione a classe...</option>
         <option value="A">A</option>
         <option value="B">B</option>
         <option value="C">C</option>
