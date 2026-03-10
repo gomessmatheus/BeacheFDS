@@ -377,6 +377,16 @@ body.tiebreak-active .score-live{color:var(--gold);}
 .ai-gender-btn.active-m{background:rgba(43,191,176,.2);border-color:var(--teal);color:var(--teal);font-weight:700;}
 .ai-gender-btn.active-f{background:rgba(232,93,58,.2);border-color:var(--coral);color:var(--coral-l);font-weight:700;}
 .ai-confidence-low{color:var(--gold);}
+
+/* ── DUPLA LINKING ───────────────────────────────────────────────── */
+.dupla-card.incomplete { border-left: 3px solid var(--gold); opacity: .9; }
+.dupla-pending { font-size:11px; color:var(--gold); margin-top:3px; font-style:italic; }
+.pool-paired-badge { font-size:10px; background:rgba(43,191,176,.12); color:var(--teal);
+  border-radius:5px; padding:2px 7px; white-space:nowrap; }
+.dupla-link-btn { background:rgba(240,180,41,.12); border:1px solid rgba(240,180,41,.3);
+  color:var(--gold); border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer;
+  font-family:'Outfit',sans-serif; white-space:nowrap; transition:all .15s; }
+.dupla-link-btn:hover { background:rgba(240,180,41,.25); }
 </style>
 </head>
 <body>
@@ -551,7 +561,8 @@ body.tiebreak-active .score-live{color:var(--gold);}
     </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModals()">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveDupla()">💾 Salvar</button>
+      <button class="btn btn-secondary" onclick="saveDuplaPending()" id="btn-save-pending" style="display:none">💾 Salvar só P1</button>
+      <button class="btn btn-primary" onclick="saveDupla()">💾 Salvar Dupla</button>
     </div>
   </div>
 </div>
@@ -1697,16 +1708,23 @@ function renderDuplas(){
     const card = document.createElement('div');
     card.className = 'dupla-card';
     card.style.animationDelay = (i*0.025)+'s';
+    const isPending = mi.hasP2 && !d.f;
+    if(isPending) card.classList.add('incomplete');
     card.innerHTML = `
       <div class="dupla-num">${String(i+1).padStart(2,'0')}</div>
       <div class="dupla-names">
         <div class="nm">${d.m}</div>
-        ${d.f ? `<div class="nf">${d.f}</div>` : ''}
+        ${d.f
+          ? `<div class="nf">${d.f}</div>`
+          : (mi.hasP2 ? `<div class="dupla-pending">⏳ Aguardando parceiro(a)</div>` : '')}
         <span class="dupla-group-badge ${gClass}" style="margin-top:5px">${gLabel}</span>
       </div>
-      <div class="dupla-actions">
-        <button class="icon-btn admin-only" onclick="openDuplaModal(${i})" title="Editar">✏️</button>
-        <button class="icon-btn del admin-only" onclick="confirmDelete(${i})" title="Remover">🗑️</button>
+      <div class="dupla-actions" style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
+        ${isPending ? `<button class="dupla-link-btn admin-only" onclick="openLinkPartnerModal(${i})">🔗 Vincular parceiro</button>` : ''}
+        <div style="display:flex;gap:4px;">
+          <button class="icon-btn admin-only" onclick="openDuplaModal(${i})" title="Editar">✏️</button>
+          <button class="icon-btn del admin-only" onclick="confirmDelete(${i})" title="Remover">✕</button>
+        </div>
       </div>
     `;
     grid.appendChild(card);
@@ -1777,6 +1795,10 @@ function openDuplaModal(idx){
     p2wrap.style.display = 'none';
   }
 
+  // Show "save pending" button only for new duplas with hasP2 mode
+  const pendingBtn = document.getElementById('btn-save-pending');
+  if(pendingBtn) pendingBtn.style.display = (mi.hasP2 && isEdit === false) ? '' : 'none';
+
   document.getElementById('modal-dupla').classList.add('open');
   setTimeout(() => document.getElementById('md-m').focus(), 100);
 }
@@ -1792,8 +1814,7 @@ function saveDupla(){
   const m   = document.getElementById('md-m').value.trim();
   const f   = mi.hasP2 ? document.getElementById('md-f').value.trim() : '';
   if(!m){ showToast('⚠️ Selecione ' + (mi.p1label.toLowerCase().includes('jogadora')?'a ':'o ') + mi.p1label.toLowerCase() + '!'); return; }
-  if(mi.hasP2 && !f){ showToast('⚠️ Selecione ' + (mi.p2label.toLowerCase().includes('jogadora')?'a ':'o ') + mi.p2label.toLowerCase() + '!'); return; }
-
+  // P2 is optional — dupla can be saved as pending
   if(idx === -1){
     getActiveCat().duplas.push({m, f});
     regenGroupsAndMatches();
@@ -2580,6 +2601,9 @@ function updateTimerDisplay(){
 // =============================================
 function closeModals(){
   document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
+  // Re-enable P1 select if it was disabled for link-partner flow
+  const p1sel = document.getElementById('md-m');
+  if(p1sel){ p1sel.disabled = false; p1sel.style.opacity = ''; }
 }
 
 function showToast(msg){
@@ -2625,8 +2649,17 @@ document.querySelectorAll('.modal-overlay').forEach(o => {
 function playerDot(p){ return p.adv ? '<span style="font-size:8px;opacity:.35;color:var(--muted);margin-right:4px;vertical-align:middle;">◆</span>' : '<span style="font-size:8px;opacity:0;margin-right:4px;">◆</span>'; }
 
 function renderPoolItem(p, gender, i){
+  const cat = getActiveCat();
+  const duplaInfo = getDuplaForPlayer(p.name, cat.id);
+  let pairBadge = '';
+  if(duplaInfo){
+    pairBadge = duplaInfo.partnerName
+      ? `<span class="pool-paired-badge" title="Dupla formada">🔗 ${duplaInfo.partnerName}</span>`
+      : `<span style="font-size:10px;background:rgba(240,180,41,.12);color:var(--gold);border-radius:5px;padding:2px 7px;white-space:nowrap;" title="Aguardando parceiro">⏳ sem dupla</span>`;
+  }
   return `<div class="pool-item">
     <span class="pool-item-name" onclick="toggleAdv('${gender}',${i})" style="cursor:pointer;user-select:none;">${playerDot(p)}${p.name}</span>
+    ${pairBadge}
     ${p.cat ? `<span style="font-size:10px;background:rgba(43,191,176,.12);color:var(--teal);border-radius:5px;padding:2px 7px;white-space:nowrap;">${p.cat}</span>` : ''}
     <button class="pool-item-del admin-only" onclick="removeFromPool('${gender}',${i})" title="Remover">✕</button>
   </div>`;
@@ -3684,13 +3717,24 @@ function detectColumns(headers){
   const map = {};
   headers.forEach((h,i) => {
     const n = normalizeColName(h);
-    if(map.nome===undefined    && ['nome','name','jogador','jogador1','player','player1','participante','nomejogador1'].includes(n)) map.nome = i;
-    if(map.gender===undefined  && ['genero','genero1','gender','gender1','sexo','mf','sex'].includes(n)) map.gender = i;
-    if(map.nome2===undefined   && ['jogador2','player2','parceiro','dupla','nomejogador2'].includes(n)) map.nome2 = i;
-    if(map.gender2===undefined && ['genero2','gender2','sexo2'].includes(n)) map.gender2 = i;
-    if(map.cat===undefined     && ['categoria','category','cat','modalidade','tipo'].includes(n)) map.cat = i;
-    if(map.nivel===undefined   && ['nivel','level','classe','ranking'].includes(n)) map.nivel = i;
-    if(map.phone===undefined   && ['whatsapp','contato','telefone','phone','celular'].includes(n)) map.phone = i;
+    // nome: "Nome Completo", "Nome", "Jogador", etc.
+    if(map.nome===undefined    && ['nomecompleto','nome','name','jogador','jogador1','player','player1','participante','nomejogador1','nomejogador'].includes(n)) map.nome = i;
+    // gender: "Gênero", "Genero", "Sexo"
+    if(map.gender===undefined  && ['genero','genero1','gender','gender1','sexo','mf','sex','gen'].includes(n)) map.gender = i;
+    // nome2: "Nome do Parceiro(a)", "Parceiro(a)", "Jogador2", etc.
+    if(map.nome2===undefined   && (n==='nomedoparceiroa'||n==='nomeparceiroa'||n==='parceiroa'||n==='parceiro'||n==='partner'||['jogador2','player2','dupla','nomejogador2','nomeparceiro','nomedupla'].includes(n))) map.nome2 = i;
+    // gender2: "Gênero do Parceiro(a)"
+    if(map.gender2===undefined && (n==='generodoparceiroa'||n==='generoparceiroa'||['genero2','gender2','sexo2','genderparceiro'].includes(n))) map.gender2 = i;
+    // modalidade / categoria
+    if(map.cat===undefined     && ['categoria','category','cat','modalidade','tipo','modality'].includes(n)) map.cat = i;
+    // classe (separada de nível)
+    if(map.classe===undefined  && ['classe','class','classejogo'].includes(n)) map.classe = i;
+    // nível
+    if(map.nivel===undefined   && ['nivel','nível','level','rank','ranking'].includes(n)) map.nivel = i;
+    // whatsapp
+    if(map.phone===undefined   && ['whatsapp','contato','telefone','phone','celular','fone'].includes(n)) map.phone = i;
+    // timestamp do forms — ignorar
+    if(n==='carimbodedatahora'||n==='timestamp') map._ts = i;
   });
   return map;
 }
@@ -3706,17 +3750,28 @@ function parseRows(rows, headers){
   if(colMap.nome === undefined) colMap.nome = 0;
   const result = [];
   rows.filter(r => r[colMap.nome] && String(r[colMap.nome]).trim()).forEach(r => {
-    const p1name = String(r[colMap.nome]).trim();
+    const p1name   = String(r[colMap.nome]).trim();
     const p1gender = colMap.gender !== undefined ? normalizeGender(r[colMap.gender]) : 'M';
-    const cat   = colMap.cat !== undefined ? String(r[colMap.cat]||'').trim() : '';
-    const nivel = colMap.nivel !== undefined ? String(r[colMap.nivel]||'').trim() : '';
-    const phone = colMap.phone !== undefined ? String(r[colMap.phone]||'').trim() : '';
-    result.push({ name:p1name, gender:p1gender, category:cat, nivel, phone });
-    // If jogador2 column exists, also add partner as a player
-    if(colMap.nome2 !== undefined && r[colMap.nome2] && String(r[colMap.nome2]).trim()){
-      const p2name = String(r[colMap.nome2]).trim();
+    const modalidade = colMap.cat    !== undefined ? String(r[colMap.cat]||'').trim()    : '';
+    const classe     = colMap.classe !== undefined ? String(r[colMap.classe]||'').trim() : '';
+    const nivel      = colMap.nivel  !== undefined ? String(r[colMap.nivel]||'').trim()  : '';
+    const phone      = colMap.phone  !== undefined ? String(r[colMap.phone]||'').trim()  : '';
+    // Build category name: "Modalidade Classe" e.g. "Misto Iniciante"
+    const cat = modalidade && classe ? modalidade + ' ' + classe
+              : modalidade ? modalidade
+              : classe     ? classe
+              : '';
+    const p2declared = colMap.nome2 !== undefined ? String(r[colMap.nome2]||'').trim() : '';
+    result.push({ name:p1name, gender:p1gender, category:cat, nivel, phone,
+                  _pair: p2declared || undefined });
+    // If partner declared, add them too (as placeholder — AI will reconcile names)
+    if(p2declared){
       const p2gender = colMap.gender2 !== undefined ? normalizeGender(r[colMap.gender2]) : (p1gender==='M'?'F':'M');
-      result.push({ name:p2name, gender:p2gender, category:cat, nivel, phone, _pair: p1name });
+      // Only add if not already in result (avoid duplicates when both declare each other)
+      if(!result.find(x => x.name === p2declared)){
+        result.push({ name:p2declared, gender:p2gender, category:cat, nivel, phone,
+                      _pair: p1name, _placeholder: true });
+      }
     }
   });
   return result;
@@ -3724,20 +3779,33 @@ function parseRows(rows, headers){
 
 function showImportPreview(parsed){
   _importParsed = parsed;
-  const hasCat = parsed.some(p => p.category);
+  const hasCat    = parsed.some(p => p.category);
+  const hasPairs  = parsed.some(p => p._pair);
   document.getElementById('import-distribute-opt').style.display = hasCat ? '' : 'none';
   document.getElementById('btn-confirm-import').style.display = parsed.length > 0 ? '' : 'none';
+
+  const pairSummary = hasPairs
+    ? `<div style="margin-top:8px;padding:8px 10px;background:rgba(43,191,176,.06);border:1px solid rgba(43,191,176,.2);border-radius:8px;font-size:12px;">
+        🔗 ${parsed.filter(p=>p._pair).length} jogador(es) com parceiro declarado
+        <button onclick="aiLinkDuplas()" style="margin-left:8px;background:var(--teal);color:#000;border:none;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">✨ Vincular Duplas com IA</button>
+      </div>`
+    : `<div style="margin-top:8px;padding:8px 10px;background:rgba(240,180,41,.06);border:1px solid rgba(240,180,41,.2);border-radius:8px;font-size:12px;color:var(--gold);">
+        ⚠️ Nenhuma coluna de parceiro detectada. Preencha "Nome do Parceiro(a)" no Forms para vinculação automática.
+        <button onclick="aiLinkDuplas()" style="margin-left:8px;background:rgba(43,191,176,.2);color:var(--teal);border:1px solid var(--teal);border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;">✨ Tentar vincular mesmo assim</button>
+      </div>`;
+
   return `<div style="margin-top:8px;background:rgba(43,191,176,.06);border:1px solid rgba(43,191,176,.2);border-radius:10px;padding:12px;">
     <p style="font-size:12px;font-weight:700;color:var(--teal);margin-bottom:8px;">✅ ${parsed.length} jogador(es) encontrado(s)</p>
     <div style="max-height:150px;overflow-y:auto;display:grid;gap:4px;">
       ${parsed.slice(0,30).map(p =>
         `<div style="font-size:12px;display:flex;gap:8px;align-items:center;">
-          <span style="color:${p.gender==='F'?'var(--coral-l)':'var(--teal)'};">${p.gender==='F'?'👩':'👨'}</span>
-          <span style="flex:1">${p.name}</span>
+          <span style="flex:1;font-weight:500;">${p.name}</span>
+          ${p._pair ? `<span style="font-size:10px;color:var(--teal);">🔗 ${p._pair}</span>` : ''}
           ${p.category ? `<span style="background:var(--card2);border-radius:5px;padding:1px 6px;font-size:11px;color:var(--muted);">${p.category}</span>` : ''}
         </div>`).join('')}
       ${parsed.length > 30 ? `<p style="font-size:11px;color:var(--muted);">...e mais ${parsed.length-30}</p>` : ''}
     </div>
+    ${pairSummary}
   </div>`;
 }
 
@@ -3782,6 +3850,249 @@ function handleXlsxUpload(evt){
 
 // ── Paste input ──
 
+
+
+// ── AI DUPLA LINKING ─────────────────────────────────────────────────
+let _aiLinkedDuplas = []; // [{p1, p2, category, confidence, issue}]
+
+async function aiLinkDuplas(){
+  if(!_importParsed || !_importParsed.length){ showToast('⚠️ Importe dados primeiro.'); return; }
+
+  // Find the active preview container
+  const previewEl = document.querySelector('#paste-preview,#sheets-preview,#xlsx-preview');
+  if(!previewEl) return;
+
+  // Build data for AI
+  const rows = _importParsed.map(p => ({
+    nome: p.name,
+    genero: p.gender || '',
+    categoria: p.category || '',
+    parceiro_declarado: p._pair || ''
+  }));
+
+  previewEl.innerHTML += `<div id="ai-link-status" style="margin-top:10px;padding:10px;background:rgba(43,191,176,.06);border:1px solid rgba(43,191,176,.2);border-radius:8px;font-size:13px;color:var(--muted);">✨ IA analisando duplas...</div>`;
+  const statusEl = document.getElementById('ai-link-status');
+
+  try {
+    const prompt = `Você é um assistente de torneio de beach tennis. Analise a lista de inscrições abaixo e identifique as duplas.
+
+Regras:
+- Cada jogador pode ter um "parceiro_declarado" (nome digitado livremente — pode ter erros de digitação ou nome incompleto)
+- Faça correspondência fuzzy: "Claudia" bate com "Claudia Andrade", "Carlos L." bate com "Carlos Lima"
+- Uma dupla deve ter dois jogadores da MESMA categoria
+- No misto: um M e um F. Masculino/Feminino: mesmo gênero
+- Se os dois se declararam parceiros mutuamente = confirmado (high confidence)
+- Se só um declarou o parceiro = baixa confiança
+- Se não há parceiro declarado mas nomes se repetem como parceiros de outros = tente inferir
+- Jogadores sem dupla identificável ficam como "solo"
+
+Lista de inscrições:
+${JSON.stringify(rows, null, 2)}
+
+Responda APENAS com JSON válido no formato:
+{
+  "duplas": [
+    {"p1": "Nome Exato P1", "p2": "Nome Exato P2", "categoria": "categoria", "confidence": "high|low", "note": "motivo se baixa confiança"}
+  ],
+  "solo": ["Nome1", "Nome2"],
+  "avisos": ["aviso1", "aviso2"]
+}`;
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if(!response.ok) throw new Error('Erro na API: ' + response.status);
+    const data = await response.json();
+    const raw = (data.content||[]).find(b => b.type==='text')?.text || '{}';
+    const clean = raw.replace(/```json|```/g,'').trim();
+    const result = JSON.parse(clean);
+
+    _aiLinkedDuplas = result.duplas || [];
+    renderAiLinkPreview(statusEl, result);
+
+  } catch(e) {
+    statusEl.innerHTML = `<span style="color:var(--coral)">❌ Erro: ${e.message}</span>`;
+  }
+}
+
+function renderAiLinkPreview(container, result){
+  const duplas  = result.duplas  || [];
+  const solo    = result.solo    || [];
+  const avisos  = result.avisos  || [];
+  const high    = duplas.filter(d => d.confidence === 'high').length;
+  const low     = duplas.filter(d => d.confidence !== 'high').length;
+
+  container.innerHTML = `
+    <div style="font-size:13px;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+        <span style="color:var(--success);font-weight:700;">✅ ${high} dupla(s) confirmadas</span>
+        ${low  ? `<span style="color:var(--gold);font-weight:700;">⚠️ ${low} com baixa confiança</span>` : ''}
+        ${solo.length ? `<span style="color:var(--muted);">👤 ${solo.length} solo</span>` : ''}
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:5px;max-height:240px;overflow-y:auto;margin-bottom:10px;">
+        ${duplas.map((d,i) => `
+          <div style="background:${d.confidence==='high'?'rgba(56,217,169,.07)':'rgba(240,180,41,.07)'};border:1px solid ${d.confidence==='high'?'rgba(56,217,169,.2)':'rgba(240,180,41,.2)'};border-radius:8px;padding:8px 12px;font-size:12px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="flex:1;font-weight:600;">${d.p1} <span style="color:var(--muted);font-weight:400;">+ ${d.p2}</span></span>
+              ${d.categoria ? `<span style="font-size:10px;background:var(--card2);border-radius:4px;padding:1px 7px;color:var(--muted);">${d.categoria}</span>` : ''}
+              <span style="font-size:10px;">${d.confidence==='high'?'✅':'⚠️'}</span>
+            </div>
+            ${d.note ? `<div style="font-size:10px;color:var(--gold);margin-top:3px;">⚠️ ${d.note}</div>` : ''}
+          </div>`).join('')}
+        ${solo.map(s => `
+          <div style="background:var(--night3);border:1px solid var(--border);border-radius:8px;padding:7px 12px;font-size:12px;color:var(--muted);">
+            👤 ${s} <span style="font-size:10px;">(sem dupla)</span>
+          </div>`).join('')}
+      </div>
+
+      ${avisos.length ? `<div style="font-size:11px;color:var(--gold);margin-bottom:8px;">${avisos.map(a=>'⚠️ '+a).join('<br>')}</div>` : ''}
+
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-secondary btn-sm" onclick="aiLinkDuplas()">🔄 Reanalisar</button>
+        <button class="btn btn-primary btn-sm" onclick="confirmAiLinkedImport()">✅ Confirmar e Importar</button>
+      </div>
+    </div>`;
+}
+
+function confirmAiLinkedImport(){
+  if(!_aiLinkedDuplas.length && !_importParsed.length){ showToast('⚠️ Nenhum dado para importar.'); return; }
+
+  // Build import payload: use AI duplas + add solo players from _importParsed
+  const linkedNames = new Set(_aiLinkedDuplas.flatMap(d => [d.p1, d.p2]));
+  const soloPlayers = _importParsed.filter(p => !linkedNames.has(p.name));
+
+  // Create/find categories and add duplas
+  const catMap = {}; // catName → tourCat
+  const KNOWN_CLASSES = ['A','B','C','D','Iniciante','Intermediário','Open','Pro'];
+
+  function getOrCreateCat(catName){
+    if(catMap[catName]) return catMap[catName];
+    let tourCat = (state.categories||[]).find(c => c.name.toLowerCase() === catName.toLowerCase());
+    if(!tourCat){
+      const nm = catName.toLowerCase();
+      let teamMode = 'misto';
+      if(nm.includes('masc')) teamMode = 'masculino';
+      else if(nm.includes('fem')) teamMode = 'feminino';
+      else if(nm.includes('dupla masc')) teamMode = 'dupla_m';
+      else if(nm.includes('dupla fem')) teamMode = 'dupla_f';
+      const detectedClasse = KNOWN_CLASSES.find(cl => catName.toLowerCase().includes(cl.toLowerCase())) || '';
+      addCategory(catName, teamMode, detectedClasse);
+      tourCat = state.categories[state.categories.length-1];
+    }
+    if(!tourCat.pool) tourCat.pool = {homens:[], mulheres:[]};
+    catMap[catName] = tourCat;
+    return tourCat;
+  }
+
+  let totalDuplas = 0, totalSolo = 0;
+
+  // Add AI-identified duplas
+  _aiLinkedDuplas.forEach(d => {
+    const catName = d.categoria || (state.categories[0]||{}).name || 'Geral';
+    const tourCat = getOrCreateCat(catName);
+
+    // Find player data from import
+    const p1data = _importParsed.find(p => p.name === d.p1) || {name: d.p1, gender:'M'};
+    const p2data = _importParsed.find(p => p.name === d.p2) || {name: d.p2, gender:'F'};
+
+    // Add to pool
+    const tmi = TEAM_MODE_LABELS[tourCat.teamMode] || TEAM_MODE_LABELS.misto;
+    if(tmi.poolMode === 'two_gender'){
+      const p1list = p1data.gender==='F' ? tourCat.pool.mulheres : tourCat.pool.homens;
+      const p2list = p2data.gender==='F' ? tourCat.pool.mulheres : tourCat.pool.homens;
+      if(!p1list.find(x=>x.name===d.p1)) p1list.push({name:d.p1, adv:false, cat:catName});
+      if(!p2list.find(x=>x.name===d.p2)) p2list.push({name:d.p2, adv:false, cat:catName});
+    } else {
+      if(!tourCat.pool.homens.find(x=>x.name===d.p1)) tourCat.pool.homens.push({name:d.p1,adv:false,cat:catName});
+      if(!tourCat.pool.homens.find(x=>x.name===d.p2)) tourCat.pool.homens.push({name:d.p2,adv:false,cat:catName});
+    }
+
+    // Create dupla (misto: sort by gender, otherwise p1/p2)
+    const mName = p1data.gender==='M' ? d.p1 : (p2data.gender==='M' ? d.p2 : d.p1);
+    const fName = p1data.gender==='F' ? d.p1 : (p2data.gender==='F' ? d.p2 : d.p2);
+    const dupla = tmi.poolMode === 'two_gender' ? {m:mName, f:fName} : {m:d.p1, f:d.p2};
+    if(!tourCat.duplas.find(x => (x.m===dupla.m && x.f===dupla.f)||(x.m===dupla.f&&x.f===dupla.m))){
+      tourCat.duplas.push(dupla);
+      totalDuplas++;
+    }
+    // Rebuild groups
+    const oldMap = {};
+    (tourCat.matches||[]).forEach(m=>oldMap[m.id]=m);
+    tourCat.groups  = buildGroups(tourCat.duplas);
+    tourCat.matches = buildMatches(tourCat.groups).map(m=>oldMap[m.id]?{...m,...oldMap[m.id]}:m);
+    tourCat.knockoutMatches = buildKnockoutMatches(tourCat.groups.groups.length);
+  });
+
+  // Add solo players to pool only
+  soloPlayers.forEach(p => {
+    const catName = p.category || (state.categories[0]||{}).name || 'Geral';
+    const tourCat = getOrCreateCat(catName);
+    const tmi = TEAM_MODE_LABELS[tourCat.teamMode] || TEAM_MODE_LABELS.misto;
+    const list = (tmi.poolMode==='two_gender' && p.gender==='F') ? tourCat.pool.mulheres : tourCat.pool.homens;
+    if(!list.find(x=>x.name===p.name)){ list.push({name:p.name,adv:false,cat:catName}); totalSolo++; }
+  });
+
+  saveState('categories');
+  closeModals();
+  renderCategoryTabs();
+  renderAll();
+  showToast(`✅ ${totalDuplas} dupla(s) vinculadas + ${totalSolo} jogador(es) no pool!`);
+}
+// ─────────────────────────────────────────────────────────────────────
+// ── DUPLA LINKING ────────────────────────────────────────────────────
+function saveDuplaPending(){
+  // Save dupla with only P1 — P2 pending
+  const mi  = getCatModeInfo();
+  const cat = getActiveCat();
+  if(!cat.classe){ showToast('⚠️ Categoria sem classe definida.'); return; }
+  const idx = parseInt(document.getElementById('modal-dupla-idx').value);
+  const m   = document.getElementById('md-m').value.trim();
+  if(!m){ showToast('⚠️ Selecione o primeiro jogador!'); return; }
+  if(idx === -1){
+    cat.duplas.push({m, f:''});
+    regenGroupsAndMatches();
+    showToast('✅ ' + m + ' cadastrado(a). Vincule o(a) parceiro(a) depois.');
+  } else {
+    cat.duplas[idx].m = m;
+    cat.duplas[idx].f = '';
+    showToast('✅ Dupla atualizada — parceiro(a) removido(a).');
+  }
+  saveState(); closeModals(); renderAll();
+}
+
+function openLinkPartnerModal(idx){
+  // Reuse dupla modal but focus on P2 only
+  openDuplaModal(idx);
+  // Mark that we're linking partner
+  document.getElementById('modal-dupla-title').textContent = '🔗 Vincular Parceiro(a)';
+  document.getElementById('modal-dupla-sub').textContent = 'Selecione o(a) parceiro(a) para completar a dupla.';
+  // Disable P1 select
+  const p1sel = document.getElementById('md-m');
+  p1sel.disabled = true;
+  p1sel.style.opacity = '.5';
+  // Focus P2
+  setTimeout(() => document.getElementById('md-f').focus(), 100);
+}
+
+function getDuplaForPlayer(playerName, catId){
+  // Returns {duplaIdx, partnerName} if player is in a dupla in given category
+  const cat = (state.categories||[]).find(c => c.id === catId);
+  if(!cat) return null;
+  const idx = (cat.duplas||[]).findIndex(d => d.m === playerName || d.f === playerName);
+  if(idx < 0) return null;
+  const d = cat.duplas[idx];
+  const partner = d.m === playerName ? d.f : d.m;
+  return { duplaIdx: idx, partnerName: partner, catName: cat.name };
+}
+// ─────────────────────────────────────────────────────────────────────
 // ── AI GENDER DETECTION ──────────────────────────────────────────────
 let _aiReviewData = []; // [{name, gender, category, nivel, aiConfidence}]
 
@@ -3940,10 +4251,32 @@ function fetchGoogleSheets(){
     .then(csv => {
       const lines = csv.split('\n').map(l => l.trim()).filter(Boolean);
       if(lines.length < 2){ preview.innerHTML = '<p style="color:var(--coral)">⚠️ Planilha vazia.</p>'; return; }
-      const headers = lines[0].split(',').map(h => h.replace(/^"|"$/g,'').trim());
-      const rows = lines.slice(1).map(l => l.split(',').map(c => c.replace(/^"|"$/g,'').trim()));
-      const parsed = parseRows(rows, headers);
+      // Proper CSV parsing — handles quoted fields with commas
+      function parseCSV(csv){
+        const result = []; let cur = [], field = '', inQ = false;
+        for(let i=0;i<csv.length;i++){
+          const c=csv[i], next=csv[i+1];
+          if(c==='"' && !inQ){ inQ=true; continue; }
+          if(c==='"' && inQ && next==='"'){ field+='"'; i++; continue; }
+          if(c==='"' && inQ){ inQ=false; continue; }
+          if(c===',' && !inQ){ cur.push(field.trim()); field=''; continue; }
+          if((c==='\n'||c==='\r') && !inQ){
+            if(c==='\r'&&next==='\n') i++;
+            cur.push(field.trim()); result.push(cur); cur=[]; field=''; continue; }
+          field+=c;
+        }
+        if(field||cur.length){ cur.push(field.trim()); result.push(cur); }
+        return result.filter(r=>r.some(c=>c));
+      }
+      const allRows = parseCSV(csv);
+      if(allRows.length < 2){ preview.innerHTML = '<p style="color:var(--coral)">⚠️ Planilha vazia.</p>'; return; }
+      const headers = allRows[0];
+      const rows    = allRows.slice(1);
+      const parsed  = parseRows(rows, headers);
+      // Auto-trigger AI linking if partner column detected
+      const hasPairs = parsed.some(p => p._pair);
       preview.innerHTML = showImportPreview(parsed);
+      if(hasPairs) setTimeout(() => aiLinkDuplas(), 400);
     })
     .catch(err => {
       preview.innerHTML = `<p style="color:var(--coral)">❌ ${err.message}<br><span style="font-size:11px;">Certifique-se que a planilha está com acesso público.</span></p>`;
