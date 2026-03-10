@@ -570,9 +570,15 @@ body.tiebreak-active .score-live{color:var(--gold);}
 <div class="modal-overlay" id="modal-pool">
   <div class="modal">
     <h2 id="modal-pool-title">+ Adicionar ao Pool</h2>
-    <p id="modal-pool-sub">Adicione um participante à lista.</p>
+    <p id="modal-pool-sub" style="color:var(--muted);font-size:13px;margin-bottom:12px;"></p>
     <input type="hidden" id="modal-pool-gender" value="h">
-    <div class="form-group"><label>Nome</label><input type="text" id="pool-name-input" placeholder="Nome do participante" autocomplete="off"></div>
+    <div class="form-group" style="position:relative;">
+      <label>Nome</label>
+      <input type="text" class="form-input" id="pool-name-input" placeholder="Nome do participante" autocomplete="off"
+             oninput="renderPoolSuggestions()" onkeydown="poolInputKeydown(event)">
+      <div id="pool-suggestions" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--card2);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 20px rgba(0,0,0,.35);z-index:300;overflow:hidden;max-height:200px;overflow-y:auto;"></div>
+    </div>
+    <div id="pool-other-cats" style="margin-bottom:4px;"></div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModals()">Cancelar</button>
       <button class="btn btn-primary" onclick="addToPool()">✅ Adicionar</button>
@@ -2682,16 +2688,102 @@ function toggleAdv(gender, idx){
   renderPool();
 }
 
+function getOtherCatPlayers(currentCatId, currentList){
+  // Collect all player names from other categories (not already in current pool)
+  const currentNames = new Set(currentList.map(p => p.name));
+  const seen = new Set();
+  const result = [];
+  (state.categories || []).forEach(cat => {
+    if(cat.id === currentCatId) return;
+    const pool = cat.pool || {homens:[], mulheres:[]};
+    [...pool.homens, ...pool.mulheres].forEach(p => {
+      if(!currentNames.has(p.name) && !seen.has(p.name)){
+        seen.add(p.name);
+        result.push({ name: p.name, fromCat: cat.name });
+      }
+    });
+  });
+  return result;
+}
+
 function openPoolModal(gender){
   const mi = getCatModeInfo();
+  const cat = getActiveCat();
   const isFemCol = gender === 'm' || mi.poolMode === 'one_col_f';
   const label = isFemCol ? 'Jogadora' : 'Jogador';
   document.getElementById('modal-pool-gender').value = gender;
-  document.getElementById('modal-pool-title').textContent = (isFemCol ? '👩' : '👨') + ' Adicionar ' + label;
-  document.getElementById('modal-pool-sub').textContent = 'Adicione um' + (isFemCol?'a ':' ') + label.toLowerCase() + ' ao pool.';
+  document.getElementById('modal-pool-title').textContent = 'Adicionar ' + label;
+  document.getElementById('modal-pool-sub').textContent = cat.name + ' · ' + (isFemCol ? 'Jogadoras' : 'Jogadores');
   document.getElementById('pool-name-input').value = '';
+  document.getElementById('pool-suggestions').style.display = 'none';
+
+  // Show players from other categories as quick-add chips
+  const currentList = gender === 'h' ? (cat.pool||{homens:[]}).homens : (cat.pool||{mulheres:[]}).mulheres;
+  const others = getOtherCatPlayers(cat.id, currentList);
+  const otherDiv = document.getElementById('pool-other-cats');
+  if(others.length > 0){
+    otherDiv.innerHTML = `
+      <p style="font-size:12px;color:var(--muted);margin-bottom:6px;">Jogadores de outras categorias — clique para adicionar:</p>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;max-height:100px;overflow-y:auto;">
+        ${others.map(p => `
+          <button onclick="quickAddToPool('${p.name.replace(/'/g,"\'")}', '${p.fromCat.replace(/'/g,"\'")}', this)"
+            style="background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:12px;cursor:pointer;color:var(--text);transition:all .15s;white-space:nowrap;"
+            title="De: ${p.fromCat}">
+            ${p.name} <span style="color:var(--muted);font-size:10px;">${p.fromCat}</span>
+          </button>`).join('')}
+      </div>`;
+  } else {
+    otherDiv.innerHTML = '';
+  }
+
   document.getElementById('modal-pool').classList.add('open');
   setTimeout(() => document.getElementById('pool-name-input').focus(), 100);
+}
+
+function quickAddToPool(name, fromCat, btn){
+  const gender = document.getElementById('modal-pool-gender').value;
+  const cat = getActiveCat();
+  if(!cat.pool) cat.pool = {homens:[], mulheres:[]};
+  const list = gender === 'h' ? cat.pool.homens : cat.pool.mulheres;
+  if(list.some(p => p.name === name)){ showToast('⚠️ Já está no pool!'); return; }
+  list.push({name, adv:false});
+  saveCat('pool');
+  renderPool();
+  showToast('✅ ' + name + ' adicionado(a)!');
+  // Remove chip
+  if(btn) btn.remove();
+}
+
+function renderPoolSuggestions(){
+  const input = document.getElementById('pool-name-input');
+  const box   = document.getElementById('pool-suggestions');
+  const q = input.value.trim().toLowerCase();
+  if(!q){ box.style.display = 'none'; return; }
+
+  const gender = document.getElementById('modal-pool-gender').value;
+  const cat = getActiveCat();
+  const currentList = gender === 'h' ? (cat.pool||{homens:[]}).homens : (cat.pool||{mulheres:[]}).mulheres;
+  const others = getOtherCatPlayers(cat.id, currentList);
+  const matches = others.filter(p => p.name.toLowerCase().includes(q));
+
+  if(!matches.length){ box.style.display = 'none'; return; }
+  box.innerHTML = matches.map((p, i) => `
+    <div onclick="selectPoolSuggestion('${p.name.replace(/'/g,"\'")}', '${p.fromCat.replace(/'/g,"\'")}', ${i})"
+      style="padding:9px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);transition:background .1s;"
+      onmouseenter="this.style.background='rgba(43,191,176,.08)'" onmouseleave="this.style.background=''">
+      ${p.name} <span style="font-size:11px;color:var(--muted);">· ${p.fromCat}</span>
+    </div>`).join('');
+  box.style.display = '';
+}
+
+function selectPoolSuggestion(name, fromCat, idx){
+  document.getElementById('pool-name-input').value = name;
+  document.getElementById('pool-suggestions').style.display = 'none';
+}
+
+function poolInputKeydown(e){
+  if(e.key === 'Enter') addToPool();
+  if(e.key === 'Escape') document.getElementById('pool-suggestions').style.display = 'none';
 }
 
 function addToPool(){
