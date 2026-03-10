@@ -368,6 +368,15 @@ body.tiebreak-active .score-live{color:var(--gold);}
 .draw-dupla-row{display:flex;align-items:center;gap:10px;padding:9px 16px;border-top:1px solid var(--border);font-size:13px;}
 .draw-dupla-num{font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--muted);min-width:20px;}
 .draw-seed-badge{font-size:10px;background:rgba(240,180,41,.15);color:var(--gold);border-radius:4px;padding:1px 6px;margin-left:auto;}
+
+/* ── AI GENDER DETECTION ─────────────────────────────────────────── */
+.ai-review-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;background:var(--night3);border:1px solid var(--border);font-size:13px;}
+.ai-review-row:not(:last-child){margin-bottom:4px;}
+.ai-gender-toggle{display:flex;gap:3px;}
+.ai-gender-btn{border:1px solid var(--border);background:var(--card);color:var(--muted);border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer;transition:all .15s;font-family:'Outfit',sans-serif;}
+.ai-gender-btn.active-m{background:rgba(43,191,176,.2);border-color:var(--teal);color:var(--teal);font-weight:700;}
+.ai-gender-btn.active-f{background:rgba(232,93,58,.2);border-color:var(--coral);color:var(--coral-l);font-weight:700;}
+.ai-confidence-low{color:var(--gold);}
 </style>
 </head>
 <body>
@@ -379,7 +388,7 @@ body.tiebreak-active .score-live{color:var(--gold);}
   <div class="hero-meta">
     <div class="hero-meta-item" id="meta-date" onclick="adminAction('openConfigModal')" style="cursor:pointer;border-color:rgba(232,93,58,.3);" title="Clique para configurar (Admin)">📅 <span id="hero-date-label">Data a definir</span></div>
     <div class="hero-meta-item" id="meta-time" onclick="adminAction('openConfigModal')" style="cursor:pointer;" title="Clique para configurar (Admin)">⏰ <span id="hero-time-label">Horário a definir</span></div>
-    <div class="hero-meta-item">🎾 2 Quadras</div>
+    <div class="hero-meta-item" id="meta-courts" onclick="adminAction('openConfigModal')" style="cursor:pointer;" title="Clique para configurar (Admin)">🎾 <span id="hero-courts-label">2 Quadras</span></div>
     <div class="hero-meta-item" id="meta-count">👥 34 Participantes</div>
     <div id="role-badge" class="hero-meta-item viewer" onclick="openRoleModal()" title="Clique para Admin/Juiz">👤 Participante</div>
     <div class="hero-meta-item" id="firebase-status" onclick="openFirebaseModal()" style="cursor:pointer;" title="Configurar sincronização">⚫ Offline</div>
@@ -427,7 +436,7 @@ body.tiebreak-active .score-live{color:var(--gold);}
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;" id="pool-grid">
     <div class="pool-col" id="pool-homens-col">
       <div class="pool-col-header">
-        <span class="pool-col-title" id="pool-h-title">👨 Homens</span>
+        <span class="pool-col-title" id="pool-h-title">Jogadores</span>
         <span class="pool-col-count" id="pool-h-count">0</span>
         <button class="btn btn-primary btn-sm" onclick="openPoolModal('h')" style="margin-left:auto">+ Adicionar</button>
       </div>
@@ -435,7 +444,7 @@ body.tiebreak-active .score-live{color:var(--gold);}
     </div>
     <div class="pool-col" id="pool-mulheres-col">
       <div class="pool-col-header">
-        <span class="pool-col-title" id="pool-f-title">👩 Mulheres</span>
+        <span class="pool-col-title" id="pool-f-title">Jogadoras</span>
         <span class="pool-col-count" id="pool-m-count">0</span>
         <button class="btn btn-primary btn-sm" onclick="openPoolModal('m')" style="margin-left:auto">+ Adicionar</button>
       </div>
@@ -524,11 +533,21 @@ body.tiebreak-active .score-live{color:var(--gold);}
     <input type="hidden" id="modal-dupla-idx" value="-1">
     <div class="form-group">
       <label id="md-m-label">👤 Jogador 1</label>
-      <input class="form-input" type="text" id="md-m" placeholder="Nome" onkeydown="if(event.key==='Enter')document.getElementById('md-f').focus()">
+      <select class="form-input" id="md-m">
+        <option value="">— Selecione —</option>
+      </select>
+      <p id="md-m-empty" style="display:none;font-size:12px;color:var(--gold);margin-top:6px;">
+        ⚠️ Nenhum jogador no pool. <a href="#" onclick="closeModals();showSection('pool',document.querySelector('.nav-btn[onclick*=pool]'));return false;" style="color:var(--teal);">Adicionar ao pool →</a>
+      </p>
     </div>
     <div class="form-group" id="md-f-wrap">
       <label id="md-f-label">👤 Jogador 2</label>
-      <input class="form-input" type="text" id="md-f" placeholder="Nome" onkeydown="if(event.key==='Enter')saveDupla()">
+      <select class="form-input" id="md-f">
+        <option value="">— Selecione —</option>
+      </select>
+      <p id="md-f-empty" style="display:none;font-size:12px;color:var(--gold);margin-top:6px;">
+        ⚠️ Nenhuma jogadora no pool. <a href="#" onclick="closeModals();showSection('pool',document.querySelector('.nav-btn[onclick*=pool]'));return false;" style="color:var(--teal);">Adicionar ao pool →</a>
+      </p>
     </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModals()">Cancelar</button>
@@ -962,17 +981,7 @@ function deleteCategory(id){
   renderAll();
 }
 
-function saveCat(key){
-  // Save only the changed key within the active category
-  const idx = getActiveCatIndex();
-  state._lastWriteAt = Date.now();
-  state._schemaVersion = SCHEMA_VERSION;
-  localStorage.setItem('bt2_state', JSON.stringify(state));
-  if(!fbRef) return;
-  const update = { _lastWriteAt: state._lastWriteAt };
-  update['categories/' + idx + '/' + key] = state.categories[idx][key];
-  fbRef.update(update).catch(e => console.warn('Firebase write error:', e));
-}
+// saveCat defined in Firebase REST section below
 
 function renderCategoryTabs(){
   const wrap = document.getElementById('category-tabs');
@@ -1432,9 +1441,6 @@ function buildMatches(groupsData){
 // =============================================
 //  FIREBASE SYNC
 // =============================================
-let fbApp = null;
-let fbRef = null;
-let fbLastWrite = 0; // timestamp of our last saveState() call
 const FB_CONFIG_KEY = 'bt2_firebase_config';
 const DB_PATH = 'torneio';
 
@@ -1478,114 +1484,126 @@ function parseFirebaseConfig(raw){
   return cfg;
 }
 
-function initFirebase(cfg, statusEl){
+// =============================================
+//  FIREBASE REST API (no SDK — pure fetch)
+// =============================================
+let fbDbUrl     = null;
+let fbPollTimer = null;
+let fbConnected = false;
+let fbLastRemoteTs = 0;
+
+function fbPath(){ return fbDbUrl + '/' + DB_PATH + '.json'; }
+
+async function fbRead(){
   try {
-    // Clean up previous instance
-    if(fbApp){
-      try { fbApp.delete(); } catch(e){}
-      fbApp = null; fbRef = null;
+    const r = await fetch(fbPath());
+    if(r.status === 401 || r.status === 403){ fbHandlePermissionError(); return null; }
+    if(!r.ok) return null;
+    return await r.json();
+  } catch(e){ return null; }
+}
+
+async function fbWrite(data){
+  if(!fbDbUrl) return;
+  try {
+    const r = await fetch(fbPath(), { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
+    if(r.status===401||r.status===403) fbHandlePermissionError();
+  } catch(e){ console.warn('Firebase write error:',e); }
+}
+
+async function fbPatch(data){
+  if(!fbDbUrl) return;
+  try {
+    const r = await fetch(fbPath(), { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
+    if(r.status===401||r.status===403) fbHandlePermissionError();
+  } catch(e){ console.warn('Firebase patch error:',e); }
+}
+
+function fbHandlePermissionError(){
+  fbConnected = false;
+  setFirebaseStatus(false);
+  showToast('🔒 Firebase: Permissão negada. Abra 🔥 e corrija as Regras.');
+  const sEl = document.getElementById('firebase-connect-status');
+  if(sEl) showFirebaseRulesHelp(sEl);
+}
+
+function fbStartPolling(){
+  if(fbPollTimer) clearInterval(fbPollTimer);
+  fbPollTimer = setInterval(async () => {
+    if(!fbDbUrl) return;
+    const remote = await fbRead();
+    if(!remote) return;
+    const remoteTs = remote._lastWriteAt || 0;
+    if(remoteTs > (state._lastWriteAt||0) && remoteTs !== fbLastRemoteTs){
+      fbLastRemoteTs = remoteTs;
+      state = migrateState(remote);
+      localStorage.setItem('bt2_state', JSON.stringify(state));
+      renderAll();
     }
+  }, 3000);
+}
 
-    // firebase global comes from the compat CDN scripts in <head>
-    fbApp = firebase.initializeApp(cfg, 'bt-app');
-    const db = fbApp.database();
-    fbRef = db.ref(DB_PATH);
+function fbStopPolling(){
+  if(fbPollTimer){ clearInterval(fbPollTimer); fbPollTimer = null; }
+}
 
-    // Connection indicator
-    db.ref('.info/connected').on('value', snap => {
-      setFirebaseStatus(snap.val() === true);
-    });
-
-    localStorage.setItem(FB_CONFIG_KEY, JSON.stringify(cfg));
-
-    if(statusEl){
-      statusEl.textContent = '✅ Conectado! Sincronizando em tempo real.';
-      statusEl.style.color = 'var(--success)';
-    }
-    document.getElementById('firebase-disconnect-btn').style.display = 'inline-flex';
-    setFirebaseStatus(true);
-
-    // On connect: read DB. If newer than local, apply it. Never push on connect.
-    fbRef.once('value', snap => {
-      const remote = snap.val();
-      if(remote){
-        const remoteTs = remote._lastWriteAt || 0;
-        const localTs  = state._lastWriteAt  || 0;
-        if(remoteTs > localTs){
-          state = migrateState(remote);
-          localStorage.setItem('bt2_state', JSON.stringify(state));
-          renderAll();
-          applyTheme();
-        }
-      }
-      // Start listening for future changes from other devices
-      fbRef.on('value', snap => {
-        const remote = snap.val();
-        if(!remote) return;
-        const remoteTs = remote._lastWriteAt || 0;
-        if(remoteTs <= (state._lastWriteAt || 0)) return;
-        state = migrateState(remote);
-        localStorage.setItem('bt2_state', JSON.stringify(state));
-        renderAll();
-      });
-    }).catch(e => {
-      const msg = e.message || '';
-      if(msg.includes('PERMISSION_DENIED') || msg.includes('permission')){
-        setFirebaseStatus(false);
-        showToast('🔒 Firebase: Permissão negada. Abra o 🔥 Offline e siga as instruções de regras.');
-        const statusEl2 = document.getElementById('firebase-connect-status');
-        if(statusEl2) showFirebaseRulesHelp(statusEl2);
-      } else {
-        // Fallback: keep listening anyway
-        fbRef.on('value', snap => {
-          const remote = snap.val();
-          if(!remote) return;
-          if((remote._lastWriteAt||0) <= (state._lastWriteAt||0)) return;
-          state = migrateState(remote);
-          localStorage.setItem('bt2_state', JSON.stringify(state));
-          renderAll();
-        });
-      }
-    });
-
-    // Test write to detect PERMISSION_DENIED early
-    db.ref('.info/connected').once('value').then(snap => {
-      if(snap.val() === true){
-        fbRef.child('_ping').set(Date.now()).catch(e => {
-          if((e.message||'').toLowerCase().includes('permission')){
-            setFirebaseStatus(false);
-            showToast('🔒 Firebase sem permissão de escrita. Veja as Regras do banco.');
-            const sEl = document.getElementById('firebase-connect-status');
-            if(sEl) showFirebaseRulesHelp(sEl);
-          }
-        });
-      }
-    });
-
-    showToast('🔥 Firebase conectado! Tudo sincronizado em tempo real.');
-    return true;
-  } catch(e) {
-    console.error('Firebase init error:', e);
-    if(statusEl){ statusEl.textContent = '❌ Erro: ' + e.message; statusEl.style.color = 'var(--coral)'; }
+async function initFirebase(cfg, statusEl){
+  fbDbUrl = (cfg.databaseURL||'').replace(/\/$/,'');
+  if(!fbDbUrl){
+    if(statusEl){ statusEl.innerHTML='⚠️ Falta o <code>databaseURL</code>.'; statusEl.style.color='var(--gold)'; }
     return false;
   }
+  if(statusEl){ statusEl.textContent='⏳ Conectando...'; statusEl.style.color='var(--muted)'; }
+
+  // Test with a PATCH — most reliable
+  try {
+    const r = await fetch(fbPath(), { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({_ping:Date.now()}) });
+    if(r.status===401||r.status===403){
+      fbDbUrl=null;
+      if(statusEl) showFirebaseRulesHelp(statusEl);
+      return false;
+    }
+  } catch(e){
+    fbDbUrl=null;
+    if(statusEl){ statusEl.textContent='❌ Sem rede ou URL inválida: '+e.message; statusEl.style.color='var(--coral)'; }
+    return false;
+  }
+
+  fbConnected = true;
+  localStorage.setItem(FB_CONFIG_KEY, JSON.stringify(cfg));
+  setFirebaseStatus(true);
+  document.getElementById('firebase-disconnect-btn').style.display='inline-flex';
+  if(statusEl){ statusEl.textContent='✅ Conectado!'; statusEl.style.color='var(--success)'; }
+
+  const remote = await fbRead();
+  if(remote){
+    const remoteTs = remote._lastWriteAt||0;
+    if(remoteTs > (state._lastWriteAt||0)){
+      fbLastRemoteTs = remoteTs;
+      state = migrateState(remote);
+      localStorage.setItem('bt2_state', JSON.stringify(state));
+      renderAll(); applyTheme();
+    }
+  }
+
+  fbStartPolling();
+  showToast('🔥 Firebase conectado! Sincronizando a cada 3s.');
+  return true;
 }
 
 function showFirebaseRulesHelp(el){
-  el.innerHTML = `
-    <div style="background:rgba(240,180,41,.08);border:1px solid rgba(240,180,41,.25);border-radius:10px;padding:12px 14px;font-size:12px;line-height:1.8;margin-top:8px;">
-      🔒 <strong style="color:var(--gold)">Permissão negada.</strong> Corrija as Regras do banco:<br>
-      1. Acesse <a href="https://console.firebase.google.com" target="_blank" style="color:var(--teal)">console.firebase.google.com</a><br>
-      2. Selecione seu projeto → <strong>Realtime Database</strong> → aba <strong>Regras</strong><br>
-      3. Substitua o conteúdo por:<br>
-      <code style="display:block;background:var(--night3);border-radius:6px;padding:8px;margin:6px 0;font-size:11px;white-space:pre;">{
+  el.innerHTML = `<div style="background:rgba(240,180,41,.08);border:1px solid rgba(240,180,41,.25);border-radius:10px;padding:12px 14px;font-size:12px;line-height:1.8;margin-top:8px;">
+    🔒 <strong style="color:var(--gold)">Permissão negada.</strong> Corrija as Regras:<br>
+    1. <a href="https://console.firebase.google.com" target="_blank" style="color:var(--teal)">console.firebase.google.com</a> → seu projeto → <strong>Realtime Database → Regras</strong><br>
+    2. Substitua por:<br>
+    <code style="display:block;background:var(--night3);border-radius:6px;padding:8px;margin:6px 0;font-size:11px;white-space:pre;">{
   "rules": {
     ".read": true,
     ".write": true
   }
 }</code>
-      4. Clique em <strong>Publicar</strong> e recarregue esta página.
-    </div>`;
+    3. Clique em <strong>Publicar</strong> e recarregue.
+  </div>`;
 }
 
 function openFirebaseModal(){
@@ -1593,60 +1611,31 @@ function openFirebaseModal(){
   const textarea = document.getElementById('firebase-config-input');
   const discBtn  = document.getElementById('firebase-disconnect-btn');
   const statusEl = document.getElementById('firebase-connect-status');
-  if(cfg) textarea.value = JSON.stringify(cfg, null, 2);
-  else textarea.value = '';
-  const connected = fbRef !== null;
-  discBtn.style.display = connected ? 'inline-flex' : 'none';
-  if(connected){
-    statusEl.innerHTML = '✅ Conectado ao Firebase';
-    statusEl.style.color = 'var(--success)';
-  } else if(cfg){
-    // Config exists but not connected — likely rules issue
-    statusEl.innerHTML = '⚠️ Config encontrada mas não conectado.';
-    statusEl.style.color = 'var(--gold)';
-    showFirebaseRulesHelp(statusEl);
-  } else {
-    statusEl.innerHTML = '';
-  }
+  if(cfg) textarea.value = JSON.stringify(cfg,null,2); else textarea.value='';
+  discBtn.style.display = fbConnected ? 'inline-flex' : 'none';
+  if(fbConnected){ statusEl.innerHTML='✅ Conectado ao Firebase'; statusEl.style.color='var(--success)'; }
+  else if(cfg){ statusEl.innerHTML='⚠️ Config encontrada mas não conectado.'; statusEl.style.color='var(--gold)'; showFirebaseRulesHelp(statusEl); }
+  else { statusEl.innerHTML=''; }
   document.getElementById('modal-firebase').classList.add('open');
 }
 
 function connectFirebase(){
   const raw = document.getElementById('firebase-config-input').value;
   const statusEl = document.getElementById('firebase-connect-status');
-
-  statusEl.textContent = '⏳ Analisando config...';
-  statusEl.style.color = 'var(--muted)';
-
+  statusEl.textContent='⏳ Analisando config...'; statusEl.style.color='var(--muted)';
   const cfg = parseFirebaseConfig(raw);
-
-  if(!cfg){
-    statusEl.innerHTML = '⚠️ Não foi possível ler o config. Cole o bloco <code>const firebaseConfig = { ... };</code> completo.';
-    statusEl.style.color = 'var(--gold)';
-    return;
-  }
-  if(!cfg.databaseURL){
-    statusEl.innerHTML = '⚠️ Falta o <code>databaseURL</code>. Vá em <strong>Build → Realtime Database</strong> no Firebase Console — a URL aparece no topo da página (ex: <em>https://meu-projeto-default-rtdb.firebaseio.com</em>). Adicione essa linha ao config.';
-    statusEl.style.color = 'var(--gold)';
-    return;
-  }
-  if(!cfg.apiKey){
-    statusEl.textContent = '⚠️ Falta o apiKey. Verifique se colou o config completo.';
-    statusEl.style.color = 'var(--gold)';
-    return;
-  }
-
-  statusEl.textContent = '⏳ Conectando ao Firebase...';
+  if(!cfg){ statusEl.innerHTML='⚠️ Config inválido. Cole o bloco <code>firebaseConfig = { ... }</code> completo.'; statusEl.style.color='var(--gold)'; return; }
+  if(!cfg.databaseURL){ statusEl.innerHTML='⚠️ Falta o <code>databaseURL</code>. Vá em Build → Realtime Database no console.'; statusEl.style.color='var(--gold)'; return; }
   initFirebase(cfg, statusEl);
 }
 
 function disconnectFirebase(){
-  if(fbRef){ fbRef.off(); fbRef = null; }
-  if(fbApp){ try{ fbApp.delete(); }catch(e){} fbApp = null; }
+  fbStopPolling();
+  fbDbUrl=null; fbConnected=false;
   localStorage.removeItem(FB_CONFIG_KEY);
   setFirebaseStatus(false);
-  document.getElementById('firebase-disconnect-btn').style.display = 'none';
-  document.getElementById('firebase-connect-status').textContent = 'Desconectado.';
+  document.getElementById('firebase-disconnect-btn').style.display='none';
+  document.getElementById('firebase-connect-status').textContent='Desconectado.';
   closeModals();
   showToast('Firebase desconectado.');
 }
@@ -1654,45 +1643,22 @@ function disconnectFirebase(){
 function saveState(changedKey){
   state._lastWriteAt = Date.now();
   localStorage.setItem('bt2_state', JSON.stringify(state));
-  if(!fbRef) return;
-  if(changedKey){
-    const update = { _lastWriteAt: state._lastWriteAt };
-    update[changedKey] = state[changedKey];
-    fbRef.update(update).catch(e => console.warn('Firebase write error:', e));
-  } else {
-    fbRef.set(state).catch(e => console.warn('Firebase write error:', e));
-  }
+  if(!fbDbUrl) return;
+  if(changedKey){ const u={_lastWriteAt:state._lastWriteAt}; u[changedKey]=state[changedKey]; fbPatch(u); }
+  else { fbWrite(state); }
 }
 
-// saveCat: saves only the changed key of the active category
 function saveCat(key){
-  const idx = getActiveCatIndex();
   state._lastWriteAt = Date.now();
   localStorage.setItem('bt2_state', JSON.stringify(state));
-  if(!fbRef) return;
-  const update = { _lastWriteAt: state._lastWriteAt };
-  update['categories'] = state.categories; // write full categories (simpler + reliable)
-  fbRef.update(update).catch(e => console.warn('Firebase write error:', e));
+  if(!fbDbUrl) return;
+  fbPatch({ _lastWriteAt:state._lastWriteAt, categories:state.categories });
 }
 
-// Auto-connect: wait for Firebase SDK to be available, then connect
 (function autoConnectFirebase(){
   const cfg = BAKED_FIREBASE || loadFirebaseConfig();
-  if(!cfg) return;
-  let attempts = 0;
-  function tryConnect(){
-    attempts++;
-    if(typeof firebase !== 'undefined'){
-      initFirebase(cfg, null);
-    } else if(attempts < 60){
-      setTimeout(tryConnect, 500); // retry every 500ms up to 30 seconds
-    } else {
-      console.warn('Firebase SDK never loaded after 30s - check network');
-      setFirebaseStatus(false);
-      showToast('⚠️ SDK do Firebase não carregou. Verifique sua conexão e recarregue a página.');
-    }
-  }
-  setTimeout(tryConnect, 300);
+  if(!cfg || !cfg.databaseURL) return;
+  setTimeout(() => initFirebase(cfg, null), 500);
 })();
 
 // =============================================
@@ -1717,8 +1683,8 @@ function renderDuplas(){
     card.innerHTML = `
       <div class="dupla-num">${String(i+1).padStart(2,'0')}</div>
       <div class="dupla-names">
-        <div class="nm">${isMixedMode() ? '👨' : '👤'} ${d.m}</div>
-        ${isMixedMode() && d.f ? `<div class="nf">👩 ${d.f}</div>` : ''}
+        <div class="nm">${d.m}</div>
+        ${d.f ? `<div class="nf">${d.f}</div>` : ''}
         <span class="dupla-group-badge ${gClass}" style="margin-top:5px">${gLabel}</span>
       </div>
       <div class="dupla-actions">
@@ -1742,30 +1708,56 @@ function renderDuplas(){
   document.getElementById('meta-count').textContent = '👥 '+(duplas.length*2)+' Participantes';
 }
 
+function buildPoolSelect(selectEl, emptyEl, players, currentVal){
+  // players = array of {name, ...}
+  const used = new Set(
+    (getActiveCat().duplas || []).flatMap(d => [d.m, d.f]).filter(Boolean)
+  );
+  const available = players.filter(p => !used.has(p.name) || p.name === currentVal);
+
+  selectEl.innerHTML = '<option value="">— Selecione —</option>' +
+    available.map(p => `<option value="${p.name}" ${p.name===currentVal?'selected':''}>${p.name}</option>`).join('');
+
+  const isEmpty = available.length === 0;
+  selectEl.style.display = isEmpty ? 'none' : '';
+  emptyEl.style.display  = isEmpty ? '' : 'none';
+}
+
 function openDuplaModal(idx){
   const mi = getCatModeInfo();
+  const cat = getActiveCat();
   const isEdit = idx !== undefined && idx >= 0;
-  const d = isEdit ? getActiveCat().duplas[idx] : null;
+  const d = isEdit ? cat.duplas[idx] : null;
+  const pool = cat.pool || {homens:[], mulheres:[]};
 
   document.getElementById('modal-dupla-idx').value = isEdit ? idx : -1;
   document.getElementById('modal-dupla-title').textContent = isEdit ? '✏️ Editar Dupla '+(idx+1) : '➕ Nova Dupla';
-  document.getElementById('modal-dupla-sub').textContent = mi.label + (mi.hasP2 ? ' — preencha os dois jogadores' : '');
+  document.getElementById('modal-dupla-sub').textContent = mi.label + (mi.hasP2 ? ' — selecione os dois jogadores do pool' : ' — selecione o jogador do pool');
 
-  // P1 label
+  // P1 — from homens (or homens for single-gender)
   document.getElementById('md-m-label').textContent = mi.p1icon + ' ' + mi.p1label;
-  document.getElementById('md-m').placeholder = 'Nome d' + (mi.p1label.toLowerCase().includes('jogadora') ? 'a ' : 'o ') + mi.p1label.toLowerCase();
-  document.getElementById('md-m').value = d ? d.m : '';
+  buildPoolSelect(
+    document.getElementById('md-m'),
+    document.getElementById('md-m-empty'),
+    pool.homens,
+    d ? d.m : ''
+  );
 
-  // P2 label + visibility
+  // P2
   const p2wrap = document.getElementById('md-f-wrap');
   if(mi.hasP2){
     p2wrap.style.display = '';
     document.getElementById('md-f-label').textContent = mi.p2icon + ' ' + mi.p2label;
-    document.getElementById('md-f').placeholder = 'Nome d' + (mi.p2label.toLowerCase().includes('jogadora') ? 'a ' : 'o ') + mi.p2label.toLowerCase();
-    document.getElementById('md-f').value = d ? (d.f||'') : '';
+    // two_gender = mulheres; single = homens
+    const p2pool = mi.poolMode === 'two_gender' ? pool.mulheres : pool.homens;
+    buildPoolSelect(
+      document.getElementById('md-f'),
+      document.getElementById('md-f-empty'),
+      p2pool,
+      d ? (d.f||'') : ''
+    );
   } else {
     p2wrap.style.display = 'none';
-    document.getElementById('md-f').value = '';
   }
 
   document.getElementById('modal-dupla').classList.add('open');
@@ -1777,8 +1769,8 @@ function saveDupla(){
   const idx = parseInt(document.getElementById('modal-dupla-idx').value);
   const m   = document.getElementById('md-m').value.trim();
   const f   = mi.hasP2 ? document.getElementById('md-f').value.trim() : '';
-  if(!m){ showToast('⚠️ Preencha o nome d' + (mi.p1label.toLowerCase().includes('jogadora')?'a ':'o ') + mi.p1label.toLowerCase() + '!'); return; }
-  if(mi.hasP2 && !f){ showToast('⚠️ Preencha o nome d' + (mi.p2label.toLowerCase().includes('jogadora')?'a ':'o ') + mi.p2label.toLowerCase() + '!'); return; }
+  if(!m){ showToast('⚠️ Selecione ' + (mi.p1label.toLowerCase().includes('jogadora')?'a ':'o ') + mi.p1label.toLowerCase() + '!'); return; }
+  if(mi.hasP2 && !f){ showToast('⚠️ Selecione ' + (mi.p2label.toLowerCase().includes('jogadora')?'a ':'o ') + mi.p2label.toLowerCase() + '!'); return; }
 
   if(idx === -1){
     getActiveCat().duplas.push({m, f});
@@ -2612,9 +2604,9 @@ function playerDot(p){ return p.adv ? '<span style="font-size:8px;opacity:.35;co
 
 function renderPoolItem(p, gender, i){
   return `<div class="pool-item">
-    <span class="pool-item-name" onclick="toggleAdv('${gender}',${i})" style="cursor:pointer;user-select:none;">${playerDot(p)} ${p.name}</span>
+    <span class="pool-item-name" onclick="toggleAdv('${gender}',${i})" style="cursor:pointer;user-select:none;">${playerDot(p)}${p.name}</span>
     ${p.cat ? `<span style="font-size:10px;background:rgba(43,191,176,.12);color:var(--teal);border-radius:5px;padding:2px 7px;white-space:nowrap;">${p.cat}</span>` : ''}
-    <button class="pool-item-del admin-only" onclick="removeFromPool('${gender}',${i})" title="Remover">🗑️</button>
+    <button class="pool-item-del admin-only" onclick="removeFromPool('${gender}',${i})" title="Remover">✕</button>
   </div>`;
 }
 
@@ -2641,8 +2633,8 @@ function renderPool(){
     // Misto: two columns — men | women
     poolGrid.style.gridTemplateColumns = '1fr 1fr';
     mColWrap.style.display = '';
-    hTitleEl.textContent = '👨 Jogadores';
-    mTitleEl.textContent = '👩 Jogadoras';
+    hTitleEl.textContent = 'Jogadores';
+    mTitleEl.textContent = 'Jogadoras';
     hCountEl.textContent = pool.homens.length;
     mCountEl.textContent = pool.mulheres.length;
 
@@ -2670,7 +2662,7 @@ function renderPool(){
     poolGrid.style.gridTemplateColumns = '1fr';
     mColWrap.style.display = 'none';
     const isFemale = mode === 'one_col_f';
-    hTitleEl.textContent = isFemale ? '👩 Jogadoras' : '👨 Jogadores';
+    hTitleEl.textContent = isFemale ? 'Jogadoras' : 'Jogadores';
     hCountEl.textContent = pool.homens.length;
 
     hList.innerHTML = pool.homens.length === 0
@@ -3147,6 +3139,11 @@ function updateHeroMeta(){
   }
   if(timeEl){
     timeEl.textContent = cfg.startTime + ' – ' + cfg.endTime;
+  }
+  const courtsEl = document.getElementById('hero-courts-label');
+  if(courtsEl){
+    const n = getNumCourts();
+    courtsEl.textContent = n + ' Quadra' + (n !== 1 ? 's' : '');
   }
 }
 
@@ -3676,6 +3673,131 @@ function handleXlsxUpload(evt){
 }
 
 // ── Paste input ──
+
+// ── AI GENDER DETECTION ──────────────────────────────────────────────
+let _aiReviewData = []; // [{name, gender, category, nivel, aiConfidence}]
+
+async function detectGenderWithAI(){
+  const text = (document.getElementById('paste-input').value || '').trim();
+  if(!text){ showToast('⚠️ Cole os nomes primeiro.'); return; }
+
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const names = lines.map(l => {
+    const parts = l.split(/[;,\t]/);
+    return {
+      raw: l,
+      name: (parts[0]||'').trim(),
+      gender: normalizeGender(parts[1]),  // keep if already provided
+      category: (parts[2]||'').trim(),
+      nivel: (parts[3]||'').trim(),
+    };
+  }).filter(p => p.name);
+
+  // Names that already have gender — no need to call AI
+  const needDetect = names.filter(p => !p.gender);
+  const alreadySet = names.filter(p => p.gender);
+
+  const btn = document.getElementById('btn-ai-detect');
+  const preview = document.getElementById('paste-preview');
+  btn.disabled = true;
+  btn.textContent = '⏳ Analisando nomes...';
+  preview.innerHTML = '<div style="padding:16px;text-align:center;color:var(--muted);font-size:13px;">✨ IA detectando gênero dos nomes...</div>';
+
+  let detected = [];
+  if(needDetect.length > 0){
+    try {
+      const prompt = `Analise os seguintes nomes brasileiros e determine o gênero de cada um (M para masculino, F para feminino).
+Responda APENAS com JSON válido, sem texto adicional, no formato:
+[{"name": "Nome Completo", "gender": "M", "confidence": "high"}, ...]
+Confidence pode ser: "high" (nome claramente masculino/feminino), "low" (nome ambíguo ou neutro).
+
+Nomes para analisar:
+${needDetect.map(p => p.name).join('\n')}`;
+
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+
+      if(!response.ok) throw new Error('API error ' + response.status);
+      const data = await response.json();
+      const raw = (data.content||[]).find(b => b.type==='text')?.text || '[]';
+      const clean = raw.replace(/```json|```/g,'').trim();
+      detected = JSON.parse(clean);
+    } catch(e) {
+      btn.disabled = false;
+      btn.textContent = '✨ Detectar com IA';
+      preview.innerHTML = `<p style="color:var(--coral);font-size:13px;">❌ Erro na detecção: ${e.message}</p>`;
+      return;
+    }
+  }
+
+  // Merge AI results back
+  const detectedMap = {};
+  detected.forEach(d => { detectedMap[d.name] = d; });
+
+  _aiReviewData = names.map(p => {
+    if(p.gender) return { ...p, aiConfidence: 'set' }; // already had gender
+    const ai = detectedMap[p.name] || {};
+    return { ...p, gender: ai.gender || 'M', aiConfidence: ai.confidence || 'low' };
+  });
+
+  btn.disabled = false;
+  btn.textContent = '✨ Detectar com IA';
+
+  renderAIReview(preview);
+}
+
+function renderAIReview(container){
+  const data = _aiReviewData;
+  if(!data.length){ container.innerHTML = ''; return; }
+
+  const lowCount = data.filter(p => p.aiConfidence === 'low').length;
+  const header = lowCount > 0
+    ? `<p style="font-size:12px;color:var(--gold);margin-bottom:10px;">⚠️ ${lowCount} nome(s) com confiança baixa — verifique.</p>`
+    : `<p style="font-size:12px;color:var(--success);margin-bottom:10px;">✅ Todos os gêneros detectados. Revise e confirme.</p>`;
+
+  container.innerHTML = `
+    <div style="margin-top:4px;">
+      ${header}
+      <div style="max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;" id="ai-review-list">
+        ${data.map((p, i) => `
+          <div class="ai-review-row ${p.aiConfidence==='low'?'ai-confidence-low':''}">
+            <span style="flex:1;font-weight:${p.aiConfidence==='low'?700:400};">${p.name}</span>
+            ${p.category ? `<span style="font-size:10px;background:var(--card2);border-radius:4px;padding:1px 6px;color:var(--muted);">${p.category}</span>` : ''}
+            ${p.aiConfidence==='low' ? '<span title="Confiança baixa" style="font-size:11px;">⚠️</span>' : ''}
+            <div class="ai-gender-toggle">
+              <button class="ai-gender-btn ${p.gender==='M'?'active-m':''}" onclick="setAIGender(${i},'M')">M</button>
+              <button class="ai-gender-btn ${p.gender==='F'?'active-f':''}" onclick="setAIGender(${i},'F')">F</button>
+            </div>
+          </div>`).join('')}
+      </div>
+      <button class="btn btn-primary" onclick="confirmAIReview()" style="width:100%;margin-top:10px;">✅ Confirmar e Importar</button>
+    </div>`;
+}
+
+function setAIGender(idx, gender){
+  _aiReviewData[idx].gender = gender;
+  renderAIReview(document.getElementById('paste-preview'));
+}
+
+function confirmAIReview(){
+  if(!_aiReviewData.length) return;
+  const hasCat = _aiReviewData.some(p => p.category);
+  document.getElementById('import-distribute-opt').style.display = hasCat ? '' : 'none';
+  _importParsed = _aiReviewData;
+  document.getElementById('btn-confirm-import').style.display = '';
+
+  // Scroll to confirm button
+  document.querySelector('#modal-import .modal-actions')?.scrollIntoView({behavior:'smooth'});
+  showToast('✅ Revisão concluída! Clique em Importar.');
+}
+// ─────────────────────────────────────────────────────────────────────
 function parsePasteInput(){
   const text = (document.getElementById('paste-input').value || '').trim();
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
@@ -4170,10 +4292,12 @@ applyTheme();
 
     <!-- Paste tab -->
     <div id="imp-pane-paste" style="display:none;">
-      <p style="font-size:13px;color:var(--muted);margin-bottom:8px;">Cole os nomes abaixo — um por linha. Use <code>;</code> para separar nome e gênero. Ex: <code>João Silva;M;Misto</code></p>
-      <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">Formato: <code>Nome;Gênero(M/F);Categoria(opcional)</code></p>
-      <textarea class="rules-textarea" id="paste-input" style="min-height:160px;" placeholder="João Silva;M;Misto&#10;Ana Costa;F;Misto&#10;Carlos Lima;M;Masculino&#10;..."></textarea>
-      <button class="btn btn-secondary btn-sm" onclick="parsePasteInput()" style="margin-top:8px;width:100%">🔍 Analisar</button>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:8px;">Cole os nomes — um por linha. Com gênero: <code>João;M</code>. Só o nome: a IA detecta automaticamente.</p>
+      <textarea class="rules-textarea" id="paste-input" style="min-height:160px;" placeholder="João Silva&#10;Ana Costa&#10;Carlos Lima;M&#10;Fernanda Souza;F;Misto B&#10;..."></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button class="btn btn-secondary btn-sm" onclick="parsePasteInput()" style="flex:1">🔍 Analisar</button>
+        <button class="btn btn-primary btn-sm" onclick="detectGenderWithAI()" id="btn-ai-detect" style="flex:1">✨ Detectar com IA</button>
+      </div>
       <div id="paste-preview" style="margin-top:10px;"></div>
     </div>
 
