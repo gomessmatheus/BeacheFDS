@@ -1266,23 +1266,31 @@ function migrateState(s){
   // ── Validate each category ──
   (s.categories || []).forEach(cat => {
     if(!cat.pool) cat.pool = { homens:[], mulheres:[] };
+    if(!cat.pool.homens) cat.pool.homens = [];
+    if(!cat.pool.mulheres) cat.pool.mulheres = [];
     if(cat.pool.homens.length && typeof cat.pool.homens[0]==='string')
       cat.pool.homens = cat.pool.homens.map(n=>({name:n,adv:false}));
     if(cat.pool.mulheres.length && typeof cat.pool.mulheres[0]==='string')
       cat.pool.mulheres = cat.pool.mulheres.map(n=>({name:n,adv:false}));
     if(!cat.duplas)  cat.duplas  = [];
-    if(!cat.groups || !cat.groups.groups)  cat.groups = buildGroups(cat.duplas);
-    else { cat.groups.bye = -1; }
+    if(!Array.isArray(cat.duplas)) cat.duplas = Object.values(cat.duplas);
+    if(!cat.groups || !cat.groups.groups || !Array.isArray(cat.groups.groups)){
+      cat.groups = buildGroups(cat.duplas);
+    } else {
+      cat.groups.bye = -1;
+    }
     const expected = calcFormat(cat.duplas.length).numGroups;
     if((cat.groups.groups||[]).length !== expected){
       cat.groups  = buildGroups(cat.duplas);
       cat.matches = buildMatches(cat.groups);
     }
-    if(!cat.matches) cat.matches = buildMatches(cat.groups);
-    const expectedQFs = cat.groups.groups.length===4 ? 4 : 0;
-    const currentQFs  = (cat.knockoutMatches||[]).filter(m=>m.round==='qf').length;
-    if(!cat.knockoutMatches || currentQFs !== expectedQFs)
-      cat.knockoutMatches = buildKnockoutMatches(cat.groups.groups.length);
+    if(!cat.matches || !Array.isArray(cat.matches)) cat.matches = buildMatches(cat.groups);
+    if(!cat.knockoutMatches || !Array.isArray(cat.knockoutMatches))
+      cat.knockoutMatches = buildKnockoutMatches((cat.groups.groups||[]).length);
+    const expectedQFs = (cat.groups.groups||[]).length===4 ? 4 : 0;
+    const currentQFs  = cat.knockoutMatches.filter(m=>m.round==='qf').length;
+    if(currentQFs !== expectedQFs)
+      cat.knockoutMatches = buildKnockoutMatches((cat.groups.groups||[]).length);
     if(!cat.teamMode) cat.teamMode = 'misto';
     if(!cat.name)     cat.name     = 'Categoria';
     if(!cat.classe)   cat.classe   = '';
@@ -3020,7 +3028,7 @@ function getNumCourts(){
 
 function getDays(){
   const cfg = state.config || DEFAULT_CONFIG;
-  if(cfg.days && cfg.days.length) return cfg.days;
+  if(cfg.days){ if(!Array.isArray(cfg.days)) cfg.days = Object.values(cfg.days); if(cfg.days.length) return cfg.days; }
   // Legacy fallback: single day from old config
   return [{ date: cfg.date||'', startTime: cfg.startTime||'09:00', endTime: cfg.endTime||'18:00', label:'Dia 1' }];
 }
