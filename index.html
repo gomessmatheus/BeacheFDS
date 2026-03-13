@@ -2209,9 +2209,12 @@ function renderGrupos(){
 function getQualified(){
   const cat = getActiveCat(); const {groups, matches, duplas} = cat;
   const ng = (groups.groups||[]).length;
-  // For 3 groups: advance top 2 from each (for runner-up selection)
-  // For others: use calcFormat
-  const advancePerGroup = ng === 3 ? 2 : calcFormat(duplas.length).advancePerGroup;
+  // Always advance based on actual number of groups — never use calcFormat here
+  // ng=1: top 4 advance to SF
+  // ng=2: top 2 from each → SF (4 teams)
+  // ng=3: top 2 from each → pick best runner-up for 4th SF spot
+  // ng=4: top 2 from each → QF (8 teams)
+  const advancePerGroup = ng === 1 ? 4 : 2;
   const qualified = [];
   (groups.groups||[]).forEach((grp, gi) => {
     const standings = calcStandings(grp, matches, duplas);
@@ -2240,7 +2243,8 @@ function renderChaveamento(){
   function duplaName(di){
     if(di === null || di === undefined) return null;
     const d = duplas[di];
-    return d ? `${d.m} / ${d.f}` : null;
+    if(!d) return null;
+    return d.f ? `${d.m} / ${d.f}` : d.m;
   }
 
   function makeKnockoutCard(m, timeLimit){
