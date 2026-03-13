@@ -1251,8 +1251,13 @@ function migrateState(s){
         if(cat.pool.homens && !Array.isArray(cat.pool.homens)) cat.pool.homens = Object.values(cat.pool.homens);
         if(cat.pool.mulheres && !Array.isArray(cat.pool.mulheres)) cat.pool.mulheres = Object.values(cat.pool.mulheres);
       }
-      if(cat.groups && cat.groups.groups && !Array.isArray(cat.groups.groups)){
-        cat.groups.groups = Object.values(cat.groups.groups).map(g => Array.isArray(g) ? g : Object.values(g));
+      if(cat.groups && cat.groups.groups){
+        // Always normalize: outer may be object OR array, each inner group may also be object
+        if(!Array.isArray(cat.groups.groups)) cat.groups.groups = Object.values(cat.groups.groups);
+        cat.groups.groups = cat.groups.groups.map(g => {
+          const arr = Array.isArray(g) ? g : Object.values(g);
+          return arr.map(Number); // ensure indices are numbers, not strings
+        });
       }
     });
   }
@@ -2217,18 +2222,15 @@ function renderGrupos(){
 function getQualified(){
   const cat = getActiveCat(); const {groups, matches, duplas} = cat;
   const ng = (groups.groups||[]).length;
-  // Always advance based on actual number of groups — never use calcFormat here
-  // ng=1: top 4 advance to SF
-  // ng=2: top 2 from each → SF (4 teams)
-  // ng=3: top 2 from each → pick best runner-up for 4th SF spot
-  // ng=4: top 2 from each → QF (8 teams)
   const advancePerGroup = ng === 1 ? 4 : 2;
   const qualified = [];
   (groups.groups||[]).forEach((grp, gi) => {
-    const standings = calcStandings(grp, matches, duplas);
+    // Defensive: ensure grp is always a proper array of numbers
+    const grpArr = (Array.isArray(grp) ? grp : Object.values(grp)).map(Number);
+    const standings = calcStandings(grpArr, matches, duplas);
     for(let pos = 1; pos <= Math.min(advancePerGroup, standings.length); pos++){
       const s = standings[pos-1];
-      qualified.push({ gi, pos, di: s?.di, d: duplas[s?.di], w: s?.w||0, gf: s?.gf||0, ga: s?.ga||0 });
+      if(s !== undefined) qualified.push({ gi, pos, di: s.di, d: duplas[s.di], w: s.w||0, gf: s.gf||0, ga: s.ga||0 });
     }
   });
   return qualified;
@@ -2247,6 +2249,7 @@ function renderChaveamento(){
   const km = getActiveCat().knockoutMatches;
   const container = document.getElementById('bracket-container');
   container.innerHTML = '';
+
 
   function duplaName(di){
     if(di === null || di === undefined) return null;
@@ -3682,18 +3685,17 @@ function calcFormat(n){
 function runDraw(){
   const cat = getActiveCat();
   const duplas = [...cat.duplas.map((d,i) => ({...d, origIdx:i}))];
-  const numGroups = calcFormat(duplas.length).numGroups;
+  // Respect existing group format — do not override manually set number of groups
+  const existingNg = (cat.groups && Array.isArray(cat.groups.groups) && cat.groups.groups.length > 0)
+    ? cat.groups.groups.length
+    : calcFormat(duplas.length).numGroups;
+  const numGroups = existingNg;
 
-  // Separate seeded (adv) duplas — mark them if pool flagged adv
-  // For preformed mode we use order of registration as seeding proxy
-  // Seeds: first N duplas (one per group) are distributed as seeds
-  const seeds  = duplas.slice(0, numGroups);
-  const rest   = duplas.slice(numGroups);
-  shuffle(rest);
-
-  // Build groups: place one seed per group, then fill with rest
-  const groups = Array.from({length: numGroups}, (_, gi) => [seeds[gi]]);
-  rest.forEach((d, i) => groups[i % numGroups].push(d));
+  // Pure random — no seeding
+  const shuffled = [...duplas];
+  shuffle(shuffled);
+  const groups = Array.from({length: numGroups}, () => []);
+  shuffled.forEach((d, i) => groups[i % numGroups].push(d));
 
   _drawResult = { groups, numGroups };
   renderDrawPreview();
@@ -3736,7 +3738,7 @@ function renderDrawPreview(){
             <div style="flex:1">
               <div style="font-weight:600;font-size:13px;">${d.m}${d.f ? ' <span style="color:var(--muted);font-weight:400;">/ '+d.f+'</span>' : ''}</div>
             </div>
-            ${rank === 0 ? '<span class="draw-seed-badge">CABEÇA</span>' : ''}
+            
           </div>`).join('')}
       </div>`).join('') + '</div>';
 
