@@ -387,6 +387,12 @@ body.tiebreak-active .score-live{color:var(--gold);}
   color:var(--gold); border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer;
   font-family:'Outfit',sans-serif; white-space:nowrap; transition:all .15s; }
 .dupla-link-btn:hover { background:rgba(240,180,41,.25); }
+.rg-group { background:var(--night3); border:1px solid var(--border); border-radius:10px; padding:10px; margin-bottom:10px; }
+.rg-group-header { font-size:12px; font-weight:700; color:var(--gold); margin-bottom:8px; letter-spacing:1px; }
+.rg-dupla { display:flex; align-items:center; gap:8px; padding:7px 10px; background:var(--card); border:1px solid var(--border); border-radius:8px; margin-bottom:6px; font-size:13px; }
+.rg-dupla-name { flex:1; }
+.rg-move-btn { background:var(--night3); border:1px solid var(--border); border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer; color:var(--muted); }
+.rg-move-btn:hover { color:var(--text); border-color:var(--gold); }
 </style>
 </head>
 <body>
@@ -430,6 +436,7 @@ body.tiebreak-active .score-live{color:var(--gold);}
     <button class="btn btn-primary admin-only" onclick="openDuplaModal()">+ Adicionar Dupla</button>
     <button class="btn btn-secondary admin-only" onclick="sortearDoPool()">🎲 Sortear do Pool</button>
     <button class="btn btn-secondary admin-only" onclick="openSortearGruposModal()">🎯 Sortear Grupos</button>
+    <button class="btn btn-secondary admin-only" onclick="openRegroupModal()">✏️ Remanejamento</button>
   </div>
   <div class="duplas-grid" id="duplas-grid"></div>
   <div id="reserva-row" style="margin-top:12px;"></div>
@@ -1722,6 +1729,51 @@ function saveCat(key){
   fbPatch({ _lastWriteAt:state._lastWriteAt, categories:state.categories });
 }
 
+// ── REGROUP MODAL ────────────────────────────────────────────────────
+function openRegroupModal(){
+  const cat = getActiveCat();
+  const groups = cat.groups.groups || [];
+  const duplas = cat.duplas;
+  const wrap = document.getElementById('rg-groups-wrap');
+  wrap.innerHTML = '';
+  groups.forEach((grp, gi) => {
+    const div = document.createElement('div');
+    div.className = 'rg-group';
+    div.id = 'rg-group-' + gi;
+    div.innerHTML = '<div class="rg-group-header">GRUPO ' + 'ABCDEFGH'[gi] + '</div>';
+    grp.forEach(di => {
+      const d = duplas[di];
+      if(!d) return;
+      const row = document.createElement('div');
+      row.className = 'rg-dupla';
+      // Build move buttons for all other groups
+      const moveBtns = groups.map((_, gj) => {
+        if(gj === gi) return '';
+        return `<button class="rg-move-btn" onclick="regroupMove(${di},${gi},${gj})">→ ${('ABCDEFGH')[gj]}</button>`;
+      }).join('');
+      row.innerHTML = `<div class="rg-dupla-name"><strong>${d.m}</strong>${d.f ? ' / ' + d.f : ''}</div>${moveBtns}`;
+      div.appendChild(row);
+    });
+    wrap.appendChild(div);
+  });
+  document.getElementById('modal-regroup').classList.add('open');
+}
+
+function regroupMove(di, fromGi, toGi){
+  const cat = getActiveCat();
+  const groups = cat.groups.groups;
+  groups[fromGi] = groups[fromGi].filter(x => x !== di);
+  groups[toGi].push(di);
+  // Rebuild matches preserving existing scores
+  const oldMap = {};
+  (cat.matches||[]).forEach(m => { oldMap[m.id] = m; });
+  cat.matches = buildMatches(cat.groups).map(m => oldMap[m.id] ? {...m, s1:oldMap[m.id].s1, s2:oldMap[m.id].s2, done:oldMap[m.id].done} : m);
+  saveState('categories');
+  renderAll();
+  openRegroupModal(); // refresh modal
+  showToast('Dupla movida para Grupo ' + 'ABCDEFGH'[toGi]);
+}
+
 (function autoConnectFirebase(){
   const cfg = BAKED_FIREBASE || loadFirebaseConfig();
   if(!cfg || !cfg.databaseURL){
@@ -2144,12 +2196,16 @@ function renderGrupos(){
 // =============================================
 function getQualified(){
   const cat = getActiveCat(); const {groups, matches, duplas} = cat;
-  const {advancePerGroup} = calcFormat(duplas.length);
+  const ng = (groups.groups||[]).length;
+  // For 3 groups: advance top 2 from each (for runner-up selection)
+  // For others: use calcFormat
+  const advancePerGroup = ng === 3 ? 2 : calcFormat(duplas.length).advancePerGroup;
   const qualified = [];
-  groups.groups.forEach((grp, gi) => {
+  (groups.groups||[]).forEach((grp, gi) => {
     const standings = calcStandings(grp, matches, duplas);
     for(let pos = 1; pos <= Math.min(advancePerGroup, standings.length); pos++){
-      qualified.push({ gi, pos, di: standings[pos-1]?.di, d: duplas[standings[pos-1]?.di] });
+      const s = standings[pos-1];
+      qualified.push({ gi, pos, di: s?.di, d: duplas[s?.di], w: s?.w||0, gf: s?.gf||0, ga: s?.ga||0 });
     }
   });
   return qualified;
@@ -4906,6 +4962,18 @@ applyTheme();
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModals()">Cancelar</button>
       <button class="btn btn-primary" onclick="savePreformedDupla()">Salvar Dupla</button>
+    </div>
+  </div>
+</div>
+
+<!-- REGROUP MODAL -->
+<div class="modal-overlay" id="modal-regroup">
+  <div class="modal" style="max-width:520px;max-height:92vh;overflow-y:auto;">
+    <h2>✏️ Remanejamento de Grupos</h2>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Mova duplas entre grupos. Os resultados de jogos já realizados são preservados.</p>
+    <div id="rg-groups-wrap"></div>
+    <div class="modal-actions" style="margin-top:16px;">
+      <button class="btn btn-secondary" onclick="closeModals()">Fechar</button>
     </div>
   </div>
 </div>
