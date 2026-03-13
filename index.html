@@ -1735,7 +1735,9 @@ function saveCat(key){
 //  DUPLAS
 // =============================================
 function renderDuplas(){
-  const cat = getActiveCat(); const {duplas, groups, reserva} = cat;
+  const cat = getActiveCat(); const {duplas, reserva} = cat;
+  const groups = cat.groups || {groups:[], numGroups:0, bye:-1};
+  if(!groups.groups || !Array.isArray(groups.groups)) groups.groups = [];
   const mi  = getCatModeInfo();
   const grid = document.getElementById('duplas-grid');
   grid.innerHTML = '';
@@ -1743,7 +1745,7 @@ function renderDuplas(){
   duplas.forEach((d, i) => {
     // Find group
     let groupIdx = -1;
-    groups.groups.forEach((g,gi) => { if(g.includes(i)) groupIdx = gi; });
+    groups.groups.forEach((g,gi) => { if(Array.isArray(g) && g.includes(i)) groupIdx = gi; });
     const gLabel = groupIdx >= 0 ? 'Grupo ' + GROUP_NAMES[groupIdx] : '—';
     const gClass = groupIdx >= 0 ? 'gb-'+GROUP_COLORS[groupIdx] : '';
     
