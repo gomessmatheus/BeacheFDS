@@ -1286,18 +1286,25 @@ function migrateState(s){
     } else {
       cat.groups.bye = -1;
     }
-    const expected = calcFormat(cat.duplas.length).numGroups;
-    if((cat.groups.groups||[]).length !== expected){
+    // Only auto-rebuild if groups are empty or duplas not represented
+    const allDuplas = new Set(cat.duplas.map((_,i)=>i));
+    const inGroups  = new Set((cat.groups.groups||[]).flat());
+    const missingFromGroups = [...allDuplas].some(i => !inGroups.has(i));
+    const hasEmptyGroups = cat.groups.groups.length === 0;
+    if(hasEmptyGroups || missingFromGroups){
       cat.groups  = buildGroups(cat.duplas);
       cat.matches = buildMatches(cat.groups);
     }
     if(!cat.matches || !Array.isArray(cat.matches)) cat.matches = buildMatches(cat.groups);
-    if(!cat.knockoutMatches || !Array.isArray(cat.knockoutMatches))
-      cat.knockoutMatches = buildKnockoutMatches((cat.groups.groups||[]).length);
-    const expectedQFs = (cat.groups.groups||[]).length===4 ? 4 : 0;
-    const currentQFs  = cat.knockoutMatches.filter(m=>m.round==='qf').length;
-    if(currentQFs !== expectedQFs)
-      cat.knockoutMatches = buildKnockoutMatches((cat.groups.groups||[]).length);
+    const ng = (cat.groups.groups||[]).length;
+    const expectedQFs = ng === 4 ? 4 : 0;
+    if(!cat.knockoutMatches || !Array.isArray(cat.knockoutMatches)){
+      cat.knockoutMatches = buildKnockoutMatches(ng);
+    } else {
+      const currentQFs = cat.knockoutMatches.filter(m=>m.round==='qf').length;
+      if(currentQFs !== expectedQFs)
+        cat.knockoutMatches = buildKnockoutMatches(ng);
+    }
     if(!cat.teamMode) cat.teamMode = 'misto';
     if(!cat.name)     cat.name     = 'Categoria';
     if(!cat.classe)   cat.classe   = '';
@@ -1365,7 +1372,7 @@ function buildFreshState(duplas, pool){
 }
 
 function buildKnockoutMatches(numGroups){
-  numGroups = numGroups || 4;
+  numGroups = numGroups || 2;
   const gNames = ['A','B','C','D'];
   const qfMatches = [];
   if(numGroups === 4){
@@ -2178,7 +2185,7 @@ function renderGrupos(){
     }).join('');
     
     card.innerHTML = `
-      <div class="standing-header sh-${GROUP_COLORS[gi]}">GRUPO ${GROUP_NAMES[gi]}<span class="badge">4 Duplas</span></div>
+      <div class="standing-header sh-${GROUP_COLORS[gi]}">GRUPO ${GROUP_NAMES[gi]}<span class="badge">${grp.length} Duplas</span></div>
       <table class="st-table">
         <thead><tr><th>#</th><th class="left">${getSport().teamLabel}</th><th>J</th><th>V</th><th>D</th><th>${getSport().scoreLabel}</th><th>Saldo</th><th>Pts</th></tr></thead>
         <tbody>${rows}</tbody>
