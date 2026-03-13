@@ -1290,9 +1290,15 @@ function loadState(){
       const s = JSON.parse(saved);
       // Reset if schema version changed
       if((s._schemaVersion || 0) < SCHEMA_VERSION){
-        localStorage.removeItem('bt2_state');
-        if(BAKED_STATE) return migrateState(JSON.parse(JSON.stringify(BAKED_STATE)));
-        return buildFreshState([]);
+        // If Firebase is configured, don't wipe local — Firebase will restore on connect
+        const hasFb = !!(BAKED_FIREBASE || localStorage.getItem('bt_firebase_cfg'));
+        if(!hasFb){
+          localStorage.removeItem('bt2_state');
+          if(BAKED_STATE) return migrateState(JSON.parse(JSON.stringify(BAKED_STATE)));
+          return buildFreshState([]);
+        }
+        // Firebase configured: keep what we have, let remote overwrite
+        return migrateState(s);
       }
       if(BAKED_STATE && s._bakedVersion !== BAKED_STATE._bakedVersion){
         localStorage.removeItem('bt2_state');
@@ -1519,6 +1525,7 @@ function parseFirebaseConfig(raw){
 let fbDbUrl     = null;
 let fbPollTimer = null;
 let fbConnected = false;
+let fbInitialLoadDone = false; // blocks saveState writes until Firebase loaded
 let fbLastRemoteTs = 0;
 
 function fbPath(){ return fbDbUrl + '/' + DB_PATH + '.json'; }
@@ -1605,18 +1612,18 @@ async function initFirebase(cfg, statusEl){
   if(statusEl){ statusEl.textContent='✅ Conectado!'; statusEl.style.color='var(--success)'; }
 
   const remote = await fbRead();
-  if(remote){
-    const remoteTs = remote._lastWriteAt||0;
-    if(remoteTs > (state._lastWriteAt||0)){
-      fbLastRemoteTs = remoteTs;
-      state = migrateState(remote);
-      localStorage.setItem('bt2_state', JSON.stringify(state));
-      renderAll(); applyTheme();
-    }
+  if(remote && (remote._lastWriteAt||0) > 0){
+    // Always load from Firebase on connect — remote is source of truth
+    fbLastRemoteTs = remote._lastWriteAt||0;
+    state = migrateState(remote);
+    state._schemaVersion = SCHEMA_VERSION;
+    localStorage.setItem('bt2_state', JSON.stringify(state));
+    renderAll(); applyTheme();
   }
 
+  fbInitialLoadDone = true; // only NOW allow saveState to write to Firebase
   fbStartPolling();
-  showToast('🔥 Firebase conectado! Sincronizando a cada 3s.');
+  showToast('🔥 Firebase conectado!');
   return true;
 }
 
@@ -1671,23 +1678,28 @@ function disconnectFirebase(){
 
 function saveState(changedKey){
   state._lastWriteAt = Date.now();
+  state._schemaVersion = SCHEMA_VERSION;
   localStorage.setItem('bt2_state', JSON.stringify(state));
-  if(!fbDbUrl) return;
+  if(!fbDbUrl || !fbInitialLoadDone) return; // never overwrite Firebase before initial load
   if(changedKey){ const u={_lastWriteAt:state._lastWriteAt}; u[changedKey]=state[changedKey]; fbPatch(u); }
   else { fbWrite(state); }
 }
 
 function saveCat(key){
   state._lastWriteAt = Date.now();
+  state._schemaVersion = SCHEMA_VERSION;
   localStorage.setItem('bt2_state', JSON.stringify(state));
-  if(!fbDbUrl) return;
+  if(!fbDbUrl || !fbInitialLoadDone) return; // never overwrite Firebase before initial load
   fbPatch({ _lastWriteAt:state._lastWriteAt, categories:state.categories });
 }
 
 (function autoConnectFirebase(){
   const cfg = BAKED_FIREBASE || loadFirebaseConfig();
-  if(!cfg || !cfg.databaseURL) return;
-  setTimeout(() => initFirebase(cfg, null), 500);
+  if(!cfg || !cfg.databaseURL){
+    fbInitialLoadDone = true; // no Firebase — safe to save locally immediately
+    return;
+  }
+  initFirebase(cfg, null);
 })();
 
 // =============================================
