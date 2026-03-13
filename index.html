@@ -1399,7 +1399,7 @@ function buildKnockoutMatches(numGroups){
 // Fill knockout di1/di2 from group results and previous knockout results
 function syncKnockoutTeams(){
   const cat = getActiveCat();
-  const numGroups = cat.groups.groups.length;
+  const numGroups = (cat.groups && Array.isArray(cat.groups.groups)) ? cat.groups.groups.length : 0;
   const ng = numGroups;
   // Rebuild if missing or if format changed (e.g. 4 groups now but had 2 before)
   const expectedQFs = ng === 4 ? 4 : 0;
@@ -2162,6 +2162,11 @@ function renderGrupos(){
   const cat = getActiveCat(); const {groups, matches, duplas} = cat;
   const wrap = document.getElementById('standings-wrap');
   wrap.innerHTML = '';
+  // Add regroup button at top of grupos tab
+  const rgBtn = document.createElement('div');
+  rgBtn.style.cssText = 'margin-bottom:12px;';
+  rgBtn.innerHTML = '<button class="btn btn-secondary admin-only" onclick="openRegroupModal()" style="font-size:13px;">✏️ Remanejamento de Grupos</button>';
+  wrap.appendChild(rgBtn);
   
   groups.groups.forEach((grp, gi) => {
     if(grp.length === 0) return;
@@ -2300,9 +2305,12 @@ function renderChaveamento(){
     return div;
   }
 
-  container.appendChild(makeRound('QUARTAS DE FINAL', '10:25 — 2 quadras', 'var(--teal)',   ['qf1','qf2','qf3','qf4']));
-  container.appendChild(makeRound('SEMIFINAIS',       '11:05 — 2 quadras', 'var(--teal)',   ['sf1','sf2']));
-  container.appendChild(makeRound('🏆 FINAL + 🥉 3º LUGAR', '13:00 — pós almoço', 'var(--gold)', ['fin','3rd']));
+  const ng = (cat.groups.groups||[]).length;
+  if(ng === 4){
+    container.appendChild(makeRound('QUARTAS DE FINAL', '— 2 quadras', 'var(--teal)', ['qf1','qf2','qf3','qf4']));
+  }
+  container.appendChild(makeRound('SEMIFINAIS', '— 2 quadras', 'var(--teal)', ['sf1','sf2']));
+  container.appendChild(makeRound('🏆 FINAL + 🥉 3º LUGAR', '— pós fase de grupos', 'var(--gold)', ['fin','3rd']));
 }
 
 function saveKnockoutResult(id){
