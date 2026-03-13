@@ -1756,7 +1756,22 @@ function buildPoolSelect(selectEl, emptyEl, players, currentVal){
 
   const isEmpty = available.length === 0;
   selectEl.style.display = isEmpty ? 'none' : '';
-  emptyEl.style.display  = isEmpty ? '' : 'none';
+  if(isEmpty){
+    emptyEl.style.display = '';
+    // Show better message if pool has players but all are used
+    const pool = getActiveCat().pool || {homens:[], mulheres:[]};
+    const totalInPool = players.length; // original players arg
+    if(totalInPool > 0){
+      emptyEl.textContent = '';
+      const msg = document.createElement('span');
+      msg.style.cssText = 'font-size:12px;color:var(--gold);';
+      msg.textContent = '⚠️ Todos os jogadores já estão em duplas.';
+      emptyEl.innerHTML = '';
+      emptyEl.appendChild(msg);
+    }
+  } else {
+    emptyEl.style.display = 'none';
+  }
 }
 
 function openDuplaModal(idx){
@@ -1772,26 +1787,41 @@ function openDuplaModal(idx){
 
   // P1 — from homens (or homens for single-gender)
   document.getElementById('md-m-label').textContent = mi.p1label.toUpperCase();
+
+  // P2 setup (before P1 so we can set onchange)
+  const p2wrap = document.getElementById('md-f-wrap');
+  const isSingleGender = mi.poolMode !== 'two_gender';
+  const p2pool = mi.poolMode === 'two_gender' ? pool.mulheres : pool.homens;
+
+  function rebuildP2(){
+    if(!mi.hasP2) return;
+    const p1val = document.getElementById('md-m').value;
+    // For single-gender: exclude P1 from P2 options
+    const p2players = isSingleGender
+      ? p2pool.filter(p => p.name !== p1val)
+      : p2pool;
+    buildPoolSelect(
+      document.getElementById('md-f'),
+      document.getElementById('md-f-empty'),
+      p2players,
+      d ? (d.f||'') : ''
+    );
+  }
+
   buildPoolSelect(
     document.getElementById('md-m'),
     document.getElementById('md-m-empty'),
     pool.homens,
     d ? d.m : ''
   );
+  // Also rebuild P1 excluding P2 for single-gender
+  const p1El = document.getElementById('md-m');
+  p1El.onchange = rebuildP2;
 
-  // P2
-  const p2wrap = document.getElementById('md-f-wrap');
   if(mi.hasP2){
     p2wrap.style.display = '';
     document.getElementById('md-f-label').textContent = mi.p2label.toUpperCase();
-    // two_gender = mulheres; single = homens
-    const p2pool = mi.poolMode === 'two_gender' ? pool.mulheres : pool.homens;
-    buildPoolSelect(
-      document.getElementById('md-f'),
-      document.getElementById('md-f-empty'),
-      p2pool,
-      d ? (d.f||'') : ''
-    );
+    rebuildP2();
   } else {
     p2wrap.style.display = 'none';
   }
@@ -1807,14 +1837,17 @@ function openDuplaModal(idx){
 function saveDupla(){
   const mi  = getCatModeInfo();
   const cat = getActiveCat();
+  // Auto-fix: extract classe from category name if missing (e.g. "Masculino Iniciante")
   if(!cat.classe){
-    showToast('⚠️ Esta categoria não tem classe definida. Edite a categoria primeiro.');
-    return;
+    const KNOWN_CLASSES = ['Pro','Open','Intermediário','Iniciante','A','B','C','D'];
+    const found = KNOWN_CLASSES.find(cl => (cat.name||'').includes(cl));
+    if(found) cat.classe = found;
   }
   const idx = parseInt(document.getElementById('modal-dupla-idx').value);
   const m   = document.getElementById('md-m').value.trim();
   const f   = mi.hasP2 ? document.getElementById('md-f').value.trim() : '';
   if(!m){ showToast('⚠️ Selecione ' + (mi.p1label.toLowerCase().includes('jogadora')?'a ':'o ') + mi.p1label.toLowerCase() + '!'); return; }
+  if(mi.hasP2 && f && m === f){ showToast('⚠️ Os dois jogadores não podem ser a mesma pessoa!'); return; }
   // P2 is optional — dupla can be saved as pending
   if(idx === -1){
     getActiveCat().duplas.push({m, f});
@@ -2868,68 +2901,78 @@ function clearPool(){
 }
 
 function sortearDoPool(){
-  const pool = getActiveCat().pool;
-  if(!pool || pool.homens.length === 0 || pool.mulheres.length === 0){
-    showToast('⚠️ Adicione jogadores no Pool antes de sortear!');
-    showSection('pool', document.querySelector('.nav-btn[onclick*="pool"]'));
-    return;
+  const cat  = getActiveCat();
+  const mi   = getCatModeInfo();
+  const pool = cat.pool || {homens:[], mulheres:[]};
+
+  if(mi.poolMode === 'two_gender'){
+    // ── MISTO: pair homens × mulheres ──────────────────────────────
+    if(pool.homens.length === 0 || pool.mulheres.length === 0){
+      showToast('⚠️ Adicione jogadores (homens E mulheres) no Pool!');
+      return;
+    }
+    const min = Math.min(pool.homens.length, pool.mulheres.length);
+    if(!confirm('Sortear ' + min + ' duplas mistas? As duplas atuais serão substituídas.')) return;
+
+    const hAdv = pool.homens.filter(p=>p.adv);  shuffle(hAdv);
+    const hReg = pool.homens.filter(p=>!p.adv); shuffle(hReg);
+    const mAdv = pool.mulheres.filter(p=>p.adv); shuffle(mAdv);
+    const mReg = pool.mulheres.filter(p=>!p.adv); shuffle(mReg);
+
+    const pairs = [];
+    const crossH = Math.min(hAdv.length, mReg.length);
+    for(let i=0;i<crossH;i++) pairs.push({h:hAdv[i], m:mReg[i]});
+    const crossM = Math.min(mAdv.length, hReg.length);
+    for(let i=0;i<crossM;i++) pairs.push({h:hReg[i], m:mAdv[i]});
+    const remH = [...hAdv.slice(crossH), ...hReg.slice(crossM)];
+    const remM = [...mReg.slice(crossH), ...mAdv.slice(crossM)];
+    const remMax = Math.min(remH.length, remM.length);
+    for(let i=0;i<remMax;i++) pairs.push({h:remH[i], m:remM[i]});
+    const finalPairs = pairs.slice(0, min);
+    shuffle(finalPairs);
+    cat.duplas = finalPairs.map(p => ({m:p.h.name, f:p.m.name}));
+
+    const usedH = new Set(finalPairs.map(p=>p.h.name));
+    const usedM = new Set(finalPairs.map(p=>p.m.name));
+    const reservaList = [
+      ...pool.homens.filter(p=>!usedH.has(p.name)).map(p=>p.name),
+      ...pool.mulheres.filter(p=>!usedM.has(p.name)).map(p=>p.name)
+    ];
+    if(reservaList.length > 0) cat.reserva = reservaList.join(', ');
+    regenGroupsAndMatches(); saveState(); renderAll();
+    showToast('🎲 ' + finalPairs.length + ' duplas mistas sorteadas!');
+
+  } else {
+    // ── SINGLE GENDER: pair players from homens pool ───────────────
+    const players = pool.homens;
+    if(players.length < 2){
+      showToast('⚠️ Adicione pelo menos 2 jogadores no Pool!');
+      return;
+    }
+    const numPairs = Math.floor(players.length / 2);
+    if(!confirm('Sortear ' + numPairs + ' duplas? As duplas atuais serão substituídas.')) return;
+
+    // Balanced draw: advanced paired with non-advanced when possible
+    const adv = players.filter(p=>p.adv);  shuffle(adv);
+    const reg = players.filter(p=>!p.adv); shuffle(reg);
+    const paired = [];
+    const cross = Math.min(adv.length, reg.length);
+    for(let i=0;i<cross;i++) paired.push([adv[i], reg[i]]);
+    // Pair remaining same-level players
+    const remAdv = adv.slice(cross);
+    const remReg = reg.slice(cross);
+    const rem = [...remAdv, ...remReg];
+    for(let i=0;i+1<rem.length;i+=2) paired.push([rem[i], rem[i+1]]);
+    shuffle(paired);
+    const finalPairs = paired.slice(0, numPairs);
+    cat.duplas = finalPairs.map(p => ({m:p[0].name, f:p[1].name}));
+
+    const usedNames = new Set(finalPairs.flat().map(p=>p.name));
+    const reservaList = players.filter(p=>!usedNames.has(p.name)).map(p=>p.name);
+    if(reservaList.length > 0) cat.reserva = reservaList.join(', ');
+    regenGroupsAndMatches(); saveState(); renderAll();
+    showToast('🎲 ' + finalPairs.length + ' duplas sorteadas!');
   }
-  const min = Math.min(pool.homens.length, pool.mulheres.length);
-  if(!confirm(`Sortear ${min} duplas mistas a partir do pool? As duplas atuais serão substituídas.`)) return;
-
-  // ── Balanced draw: advanced players distributed evenly ───────────────────
-  // Separate advanced and regular for each gender, shuffle each group
-  const hAdv = pool.homens.filter(p=>p.adv); shuffle(hAdv);
-  const hReg = pool.homens.filter(p=>!p.adv); shuffle(hReg);
-  const mAdv = pool.mulheres.filter(p=>p.adv); shuffle(mAdv);
-  const mReg = pool.mulheres.filter(p=>!p.adv); shuffle(mReg);
-
-  // Build pair buckets:
-  // Slot 1: adv man   + reg woman  (balanced)
-  // Slot 2: reg man   + adv woman  (balanced)
-  // Slot 3: remaining (reg+reg or adv+adv if no other option)
-  const pairs = [];
-
-  // Cross-pair: adv H with reg M
-  const crossH = Math.min(hAdv.length, mReg.length);
-  for(let i=0;i<crossH;i++) pairs.push({h: hAdv[i], m: mReg[i]});
-  const remHAdv = hAdv.slice(crossH);
-  const remMReg = mReg.slice(crossH);
-
-  // Cross-pair: adv M with reg H
-  const crossM = Math.min(mAdv.length, hReg.length);
-  for(let i=0;i<crossM;i++) pairs.push({h: hReg[i], m: mAdv[i]});
-  const remHReg = hReg.slice(crossM);
-  const remMAdv = mAdv.slice(crossM);
-
-  // Pair remaining reg H with reg M
-  const leftover = [...remHReg.map(h=>({h,m:null}))];
-  const leftoverM = [...remMReg, ...remMAdv];
-  const leftoverH = [...remHAdv, ...leftover.map(x=>x.h)]; // shouldn't happen but safe
-  // Actually just pair whatever is left in order
-  const unpaired = {h:[...remHReg,...remHAdv], m:[...remMReg,...remMAdv]};
-  const unpairMax = Math.min(unpaired.h.length, unpaired.m.length);
-  for(let i=0;i<unpairMax;i++) pairs.push({h: unpaired.h[i], m: unpaired.m[i]});
-
-  // Trim to min and shuffle final pair order
-  const finalPairs = pairs.slice(0, min);
-  shuffle(finalPairs);
-
-  getActiveCat().duplas = finalPairs.map(p => ({m: p.h.name, f: p.m.name}));
-
-  // Leftover players → reserva
-  const usedH = new Set(finalPairs.map(p=>p.h.name));
-  const usedM = new Set(finalPairs.map(p=>p.m.name));
-  const reservaList = [
-    ...pool.homens.filter(p=>!usedH.has(p.name)).map(p=>p.name),
-    ...pool.mulheres.filter(p=>!usedM.has(p.name)).map(p=>p.name)
-  ];
-  if(reservaList.length > 0) getActiveCat().reserva = reservaList.join(', ');
-
-  regenGroupsAndMatches();
-  saveState();
-  renderAll();
-  showToast('🎲 ' + finalPairs.length + ' duplas sorteadas do pool!');
 }
 
 // =============================================
@@ -3643,8 +3686,8 @@ function savePreformedDupla(){
   if(!p1){ showToast('⚠️ Preencha o nome do jogador.'); return; }
   // Find target category
   const targetCat = (state.categories||[]).find(c=>c.id===catId) || getActiveCat();
-  const isMixed = (TEAM_MODE_LABELS[targetCat.teamMode]||{}).hasFemale !== false;
-  const dupla = { m: p1, f: isMixed ? p2 : '' };
+  // Always save p2 if provided — single-gender duplas use {m:p1, f:p2}
+  const dupla = { m: p1, f: p2 || '' };
   if(idx === -1){
     targetCat.duplas.push(dupla);
   } else {
@@ -3659,8 +3702,7 @@ function savePreformedDupla(){
   targetCat.knockoutMatches = buildKnockoutMatches(targetCat.groups.groups.length);
   // Mirror to pool (so pool shows the players)
   if(!targetCat.pool) targetCat.pool = {homens:[], mulheres:[]};
-  // Pool: for two_gender (misto) split p1→homens, p2→mulheres
-  // For single-gender, both go to homens list
+  const tmi = TEAM_MODE_LABELS[targetCat.teamMode] || TEAM_MODE_LABELS.misto;
   if(tmi.poolMode === 'two_gender'){
     if(!targetCat.pool.homens.find(x=>x.name===p1)) targetCat.pool.homens.push({name:p1,adv:false,cat:targetCat.name});
     if(p2 && !targetCat.pool.mulheres.find(x=>x.name===p2)) targetCat.pool.mulheres.push({name:p2,adv:false,cat:targetCat.name});
@@ -4060,7 +4102,11 @@ function saveDuplaPending(){
   // Save dupla with only P1 — P2 pending
   const mi  = getCatModeInfo();
   const cat = getActiveCat();
-  if(!cat.classe){ showToast('⚠️ Categoria sem classe definida.'); return; }
+  if(!cat.classe){
+    const KNOWN_CLASSES = ['Pro','Open','Intermediário','Iniciante','A','B','C','D'];
+    const found = KNOWN_CLASSES.find(cl => (cat.name||'').includes(cl));
+    if(found) cat.classe = found;
+  }
   const idx = parseInt(document.getElementById('modal-dupla-idx').value);
   const m   = document.getElementById('md-m').value.trim();
   if(!m){ showToast('⚠️ Selecione o primeiro jogador!'); return; }
@@ -4309,10 +4355,14 @@ function confirmImport(){
 
 function importToCurrentPool(players){
   const cat = getActiveCat();
+  const mi  = getCatModeInfo();
   let added = 0;
   players.forEach(p => {
     if(!p.name) return;
-    const list = cat.pool[p.gender==='F' ? 'mulheres' : 'homens'];
+    // For single-gender modes, everyone goes to homens list regardless of gender
+    const list = (mi.poolMode === 'two_gender' && p.gender === 'F')
+      ? cat.pool.mulheres
+      : cat.pool.homens;
     if(!list.find(x => x.name === p.name)){
       list.push({ name: p.name, adv: false });
       added++;
@@ -4320,7 +4370,7 @@ function importToCurrentPool(players){
   });
   saveCat('pool');
   renderPool();
-  showToast(`✅ ${added} jogador(es) adicionado(s) ao pool!`);
+  showToast('✅ ' + added + ' jogador(es) adicionado(s) ao pool!');
 }
 
 function importWithAutoDistribute(players){
@@ -4380,9 +4430,12 @@ function importWithAutoDistribute(players){
       tourCat.matches = buildMatches(tourCat.groups).map(m=>oldMap[m.id]?{...m,...oldMap[m.id]}:m);
       tourCat.knockoutMatches = buildKnockoutMatches(tourCat.groups.groups.length);
     } else {
-      // Pool mode: just add to pool
+      // Pool mode: add to correct list based on teamMode
+      const tmi2 = TEAM_MODE_LABELS[tourCat.teamMode] || TEAM_MODE_LABELS.misto;
       playersInCat.forEach(p => {
-        const list = tourCat.pool[p.gender==='F'?'mulheres':'homens'];
+        const list = (tmi2.poolMode === 'two_gender' && p.gender === 'F')
+          ? tourCat.pool.mulheres
+          : tourCat.pool.homens;
         if(!list.find(x=>x.name===p.name)){ list.push({name:p.name,adv:false,cat:catName}); totalPlayers++; }
       });
     }
