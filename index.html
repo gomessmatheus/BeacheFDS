@@ -1570,7 +1570,9 @@ function fbStartPolling(){
     const remote = await fbRead();
     if(!remote) return;
     const remoteTs = remote._lastWriteAt || 0;
-    if(remoteTs > (state._lastWriteAt||0) && remoteTs !== fbLastRemoteTs){
+    const localTs  = state._lastWriteAt || 0;
+    // Load if remote is newer, OR if local has no timestamp (first load)
+    if(remoteTs !== fbLastRemoteTs && (remoteTs > localTs || localTs === 0)){
       fbLastRemoteTs = remoteTs;
       state = migrateState(remote);
       localStorage.setItem('bt2_state', JSON.stringify(state));
@@ -1612,8 +1614,8 @@ async function initFirebase(cfg, statusEl){
   if(statusEl){ statusEl.textContent='✅ Conectado!'; statusEl.style.color='var(--success)'; }
 
   const remote = await fbRead();
-  if(remote && (remote._lastWriteAt||0) > 0){
-    // Always load from Firebase on connect — remote is source of truth
+  if(remote && (remote.config || remote.categories || remote._lastWriteAt)){
+    // Load from Firebase — remote is source of truth regardless of _lastWriteAt
     fbLastRemoteTs = remote._lastWriteAt||0;
     state = migrateState(remote);
     state._schemaVersion = SCHEMA_VERSION;
